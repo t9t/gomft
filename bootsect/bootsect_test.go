@@ -9,9 +9,9 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	b, err := ioutil.ReadFile("bootsect.bin")
+	b, err := ioutil.ReadFile("test-bootsect.bin")
 	if err != nil {
-		t.Fatal("unable to read bootsect.bin:", err)
+		t.Fatal("unable to read test-bootsect.bin:", err)
 	}
 
 	ret := bootsect.Parse(b)
