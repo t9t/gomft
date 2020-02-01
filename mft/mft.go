@@ -7,10 +7,27 @@ import (
 	"github.com/t9t/gomft/utf16"
 )
 
-const FINAL_ATTIRBUTE_TYPE uint32 = 0xFFFFFFFF
+const (
+	ATTRIBUTE_TYPE_STANDARD_INFORMATION  AttributeType = 0x10
+	ATTRIBUTE_TYPE_ATTRIBUTE_LIST        AttributeType = 0x20
+	ATTRIBUTE_TYPE_FILE_NAME             AttributeType = 0x30
+	ATTRIBUTE_TYPE_OBJECT_ID             AttributeType = 0x40
+	ATTRIBUTE_TYPE_VOLUME_NAME           AttributeType = 0x60
+	ATTRIBUTE_TYPE_VOLUME_INFORMATION    AttributeType = 0x70
+	ATTRIBUTE_TYPE_DATA                  AttributeType = 0x80
+	ATTRIBUTE_TYPE_INDEX_ROOT            AttributeType = 0x90
+	ATTRIBUTE_TYPE_INDEX_ALLOCATION      AttributeType = 0xA0
+	ATTRIBUTE_TYPE_BITMAP                AttributeType = 0xB0
+	ATTRIBUTE_TYPE_REPARSE_POINT         AttributeType = 0xC0
+	ATTRIBUTE_TYPE_EA_INFORMATION        AttributeType = 0xD0
+	ATTRIBUTE_TYPE_EA                    AttributeType = 0xE0
+	ATTRIBUTE_TYPE_PROPERTY_SET          AttributeType = 0xF0
+	ATTRIBUTE_TYPE_LOGGED_UTILITY_STREAM AttributeType = 0x100
+	ATTRIBUTE_TYPE_TERMINATOR            AttributeType = 0xFFFFFFFF
+)
 
 type Record struct {
-	Header RecordHeader
+	Header     RecordHeader
 	Attributes []Attribute
 }
 
@@ -32,7 +49,7 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 	for len(b) > 0 {
 		r := binutil.NewLittleEndianReader(b)
 		attrType := r.Uint32(0)
-		if attrType == FINAL_ATTIRBUTE_TYPE {
+		if attrType == uint32(ATTRIBUTE_TYPE_TERMINATOR) {
 			break
 		}
 
@@ -91,7 +108,6 @@ func ParseRecordHeader(b []byte) RecordHeader {
 		NextAttributeId:       int(r.Uint16(0x28)),
 	}
 }
-
 
 type Attribute struct {
 	Type        AttributeType
