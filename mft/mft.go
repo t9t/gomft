@@ -197,9 +197,9 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 		return []DataRun{}, nil
 	}
 
-	r := binutil.NewLittleEndianReader(b)
 	runs := make([]DataRun, 0)
-	for r.Length() > 0 {
+	for len(b) > 0 {
+		r := binutil.NewLittleEndianReader(b)
 		header := r.Byte(0)
 		if header == 0 {
 			break
@@ -209,6 +209,12 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 		offsetLength := int(header >> 4)
 
 		dataRunDataLength := offsetLength + lengthLength
+
+		headerAndDataLength := dataRunDataLength + 1
+		if len(b) < headerAndDataLength {
+			return nil, fmt.Errorf("expected at least %d bytes of datarun data but is %d", headerAndDataLength, len(b))
+		}
+
 		dataRunData := r.Reader(1, dataRunDataLength)
 
 		lengthBytes := dataRunData.Read(0, lengthLength)
@@ -218,7 +224,8 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 		dataOffset := int64(binary.LittleEndian.Uint64(padTo(offsetBytes, 8)))
 
 		runs = append(runs, DataRun{OffsetCluster: dataOffset, LengthInClusters: dataLength})
-		r = r.ReaderFrom(dataRunDataLength + 1)
+
+		b = r.ReadFrom(headerAndDataLength)
 	}
 
 	return runs, nil
