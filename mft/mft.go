@@ -7,6 +7,55 @@ import (
 	"github.com/t9t/gomft/utf16"
 )
 
+const FINAL_ATTIRBUTE_TYPE uint32 = 0xFFFFFFFF
+
+type Record struct {
+	Header RecordHeader
+	Attributes []Attribute
+}
+
+func ParseRecord(b []byte) (r Record, err error) {
+	header := ParseRecordHeader(b)
+	f := header.FirstAttributeOffset
+	if f < 0 || f >= len(b) {
+		return r, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
+	}
+	attributes, err := ParseAttributes(b[f:])
+	if err != nil {
+		return r, err
+	}
+	return Record{Header: header, Attributes: attributes}, nil
+}
+
+func ParseAttributes(b []byte) ([]Attribute, error) {
+	attributes := make([]Attribute, 0)
+	for len(b) > 0 {
+		r := binutil.NewLittleEndianReader(b)
+		attrType := r.Uint32(0)
+		if attrType == FINAL_ATTIRBUTE_TYPE {
+			break
+		}
+
+		recordLength := int(r.Uint32(0x04))
+		if recordLength <= 0 {
+			return nil, fmt.Errorf("cannot handle attribute with zero or negative record length %d", recordLength)
+		}
+
+		if recordLength > len(b) {
+			return nil, fmt.Errorf("attribute record length %d exceeds data length %d", recordLength, len(b))
+		}
+
+		recordData := r.Read(0, recordLength)
+		attribute, err := ParseAttribute(recordData)
+		if err != nil {
+			return nil, err
+		}
+		attributes = append(attributes, attribute)
+		b = r.ReadFrom(recordLength)
+	}
+	return attributes, nil
+}
+
 type RecordHeader struct {
 	Signature             []byte
 	UpdateSequenceOffset  int
@@ -78,7 +127,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		Type:        AttributeType(r.Uint32(0)),
 		Resident:    resident,
 		Name:        nameStr,
-		Flags:       AttributeFlags(r.Read(0x0C, 2)),
+		Flags:       AttributeFlags(binutil.Duplicate(r.Read(0x0C, 2))),
 		AttributeId: int(r.Uint16(0x0E)),
 		Data:        binutil.Duplicate(r.ReadFrom(dataOffset)),
 	}, nil
