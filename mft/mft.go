@@ -28,17 +28,17 @@ type Flags []byte
 func ParseRecordHeader(b []byte) RecordHeader {
 	r := binutil.NewLittleEndianReader(b)
 	return RecordHeader{
-		Signature:             r.Read(0, 4),
+		Signature:             binutil.Duplicate(r.Read(0, 4)),
 		UpdateSequenceOffset:  int(r.Uint16(0x04)),
 		UpdateSequenceSize:    int(r.Uint16(0x06)),
 		LogFileSequenceNumber: r.Uint64(0x08),
 		RecordUsageNumber:     int(r.Uint16(0x10)),
 		HardLinkCount:         int(r.Uint16(0x12)),
 		FirstAttributeOffset:  int(r.Uint16(0x14)),
-		Flags:                 r.Read(0x16, 2),
+		Flags:                 binutil.Duplicate(r.Read(0x16, 2)),
 		ActualSize:            r.Uint32(0x18),
 		AllocatedSize:         r.Uint32(0x1C),
-		BaseRecordReference:   r.Read(0x20, 8),
+		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
 		NextAttributeId:       int(r.Uint16(0x28)),
 	}
 }
