@@ -40,7 +40,7 @@ func Parse(data []byte) BootSector {
 		MftMirrorClusterNumber: r.Uint64(0x38),
 		FileRecordSegmentSize:  parseBytesOrClusters(r[0x40]),
 		IndexBufferSize:        parseBytesOrClusters(r[0x44]),
-		VolumeSerialNumber:     dupe(r.Read(0x48, 8)),
+		VolumeSerialNumber:     binutil.Duplicate(r.Read(0x48, 8)),
 	}
 }
 
@@ -51,10 +51,4 @@ func parseBytesOrClusters(b byte) BytesOrClusters {
 		return BytesOrClusters{IsBytes: true, Value: value}
 	}
 	return BytesOrClusters{IsBytes: false, Value: int(b)}
-}
-
-func dupe(in []byte) []byte {
-	out := make([]byte, len(in))
-	copy(out, in)
-	return out
 }
