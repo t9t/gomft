@@ -32,18 +32,72 @@ type Record struct {
 	Attributes []Attribute
 }
 
-func ParseRecord(b []byte) (r Record, err error) {
-	header := ParseRecordHeader(b)
+func ParseRecord(b []byte) (Record, error) {
+	header, err := ParseRecordHeader(b)
+	if err != nil {
+		return Record{}, err
+	}
 	f := header.FirstAttributeOffset
 	if f < 0 || f >= len(b) {
-		return r, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
+		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
 	}
 	attributes, err := ParseAttributes(b[f:])
 	if err != nil {
-		return r, err
+		return Record{}, err
 	}
 	return Record{Header: header, Attributes: attributes}, nil
 }
+
+type RecordHeader struct {
+	Signature             []byte
+	UpdateSequenceOffset  int
+	UpdateSequenceSize    int
+	LogFileSequenceNumber uint64
+	RecordUsageNumber     int
+	HardLinkCount         int
+	FirstAttributeOffset  int
+	Flags                 Flags
+	ActualSize            uint32
+	AllocatedSize         uint32
+	BaseRecordReference   FileReference
+	NextAttributeId       int
+}
+
+type FileReference []byte
+type Flags []byte
+
+func ParseRecordHeader(b []byte) (RecordHeader, error) {
+	if len(b) < 42 {
+		return RecordHeader{}, fmt.Errorf("record header data length should be at least 42 but is %d", len(b))
+	}
+	r := binutil.NewLittleEndianReader(b)
+	return RecordHeader{
+		Signature:             binutil.Duplicate(r.Read(0, 4)),
+		UpdateSequenceOffset:  int(r.Uint16(0x04)),
+		UpdateSequenceSize:    int(r.Uint16(0x06)),
+		LogFileSequenceNumber: r.Uint64(0x08),
+		RecordUsageNumber:     int(r.Uint16(0x10)),
+		HardLinkCount:         int(r.Uint16(0x12)),
+		FirstAttributeOffset:  int(r.Uint16(0x14)),
+		Flags:                 binutil.Duplicate(r.Read(0x16, 2)),
+		ActualSize:            r.Uint32(0x18),
+		AllocatedSize:         r.Uint32(0x1C),
+		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
+		NextAttributeId:       int(r.Uint16(0x28)),
+	}, nil
+}
+
+type Attribute struct {
+	Type        AttributeType
+	Resident    bool
+	Name        string
+	Flags       AttributeFlags
+	AttributeId int
+	Data        []byte
+}
+
+type AttributeType uint32
+type AttributeFlags []byte
 
 func ParseAttributes(b []byte) ([]Attribute, error) {
 	attributes := make([]Attribute, 0)
@@ -73,54 +127,6 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 	}
 	return attributes, nil
 }
-
-type RecordHeader struct {
-	Signature             []byte
-	UpdateSequenceOffset  int
-	UpdateSequenceSize    int
-	LogFileSequenceNumber uint64
-	RecordUsageNumber     int
-	HardLinkCount         int
-	FirstAttributeOffset  int
-	Flags                 Flags
-	ActualSize            uint32
-	AllocatedSize         uint32
-	BaseRecordReference   FileReference
-	NextAttributeId       int
-}
-
-type FileReference []byte
-type Flags []byte
-
-func ParseRecordHeader(b []byte) RecordHeader {
-	r := binutil.NewLittleEndianReader(b)
-	return RecordHeader{
-		Signature:             binutil.Duplicate(r.Read(0, 4)),
-		UpdateSequenceOffset:  int(r.Uint16(0x04)),
-		UpdateSequenceSize:    int(r.Uint16(0x06)),
-		LogFileSequenceNumber: r.Uint64(0x08),
-		RecordUsageNumber:     int(r.Uint16(0x10)),
-		HardLinkCount:         int(r.Uint16(0x12)),
-		FirstAttributeOffset:  int(r.Uint16(0x14)),
-		Flags:                 binutil.Duplicate(r.Read(0x16, 2)),
-		ActualSize:            r.Uint32(0x18),
-		AllocatedSize:         r.Uint32(0x1C),
-		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
-		NextAttributeId:       int(r.Uint16(0x28)),
-	}
-}
-
-type Attribute struct {
-	Type        AttributeType
-	Resident    bool
-	Name        string
-	Flags       AttributeFlags
-	AttributeId int
-	Data        []byte
-}
-
-type AttributeType uint32
-type AttributeFlags []byte
 
 func ParseAttribute(b []byte) (Attribute, error) {
 	r := binutil.NewLittleEndianReader(b)

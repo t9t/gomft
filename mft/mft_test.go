@@ -12,7 +12,8 @@ import (
 
 func TestParseRecordHeader(t *testing.T) {
 	b := readTestMft(t)
-	header := mft.ParseRecordHeader(b)
+	header, err := mft.ParseRecordHeader(b[:42])
+	require.Nilf(t, err, "could not parse record header: %v", err)
 	expected := mft.RecordHeader{
 		Signature:             []byte{'F', 'I', 'L', 'E'},
 		UpdateSequenceOffset:  48,
