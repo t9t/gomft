@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/t9t/gomft/binutil"
-	"github.com/t9t/gomft/utf16"
 )
 
 const (
@@ -90,7 +89,6 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 type Attribute struct {
 	Type        AttributeType
 	Resident    bool
-	Name        string
 	Flags       AttributeFlags
 	AttributeId int
 	Data        []byte
@@ -100,12 +98,23 @@ type AttributeType uint32
 type AttributeFlags []byte
 
 func ParseAttributes(b []byte) ([]Attribute, error) {
+	if len(b) == 0 {
+		return []Attribute{}, nil
+	}
 	attributes := make([]Attribute, 0)
 	for len(b) > 0 {
+		if len(b) < 4 {
+			return nil, fmt.Errorf("attribute header data should be at least 4 bytes but is %d", len(b))
+		}
+
 		r := binutil.NewLittleEndianReader(b)
 		attrType := r.Uint32(0)
 		if attrType == uint32(ATTRIBUTE_TYPE_TERMINATOR) {
 			break
+		}
+		
+		if len(b) < 8 {
+			return nil, fmt.Errorf("cannot read attribute header record length, data should be at least 8 bytes but is %d", len(b))
 		}
 
 		recordLength := int(r.Uint32(0x04))
@@ -129,30 +138,52 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 }
 
 func ParseAttribute(b []byte) (Attribute, error) {
+	if len(b) < 22 {
+		return Attribute{}, fmt.Errorf("attribute data should be at least 22 bytes but is %d", len(b))
+	}
+
 	r := binutil.NewLittleEndianReader(b)
 
 	nameLength := r.Byte(0x09)
 	nameOffset := r.Uint16(0x0A)
 
-	nameData := r.Read(int(nameOffset), int(nameLength))
-	nameStr, err := utf16.DecodeString(nameData, r.ByteOrder())
-	if err != nil {
-		return Attribute{}, fmt.Errorf("unable to decode UTF16 attribute name: %w", err)
+	if nameLength != 0 {
+		// TODO: implement named attributes
+		return Attribute{}, fmt.Errorf("unable to deal with named attributes yet (len: %d; offset: %d)", nameLength, nameOffset)
 	}
 
 	resident := r.Byte(0x08) == 0x00
-	dataOffset := 0x40 //non-resident
+	var attributeData []byte
 	if resident {
-		dataOffset = 0x18
+		dataOffset := int(r.Uint16(0x14))
+		if dataOffset != 0x18 {
+			return Attribute{}, fmt.Errorf("unexpected offset to resident attribute data value of %d", dataOffset)
+		}
+		dataLength := int(r.Uint32(0x10))
+		expectedDataLength := dataOffset + dataLength
+		
+		if len(b) < expectedDataLength {
+			return Attribute{}, fmt.Errorf("expected attribute data length to be at least %d but is %d", expectedDataLength, len(b))
+		}
+
+		attributeData = r.Read(dataOffset, dataLength)
+	} else {
+		dataOffset := int(r.Uint16(0x20))
+		if dataOffset != 0x40 {
+			return Attribute{}, fmt.Errorf("unexpected offset to dataruns value of %d", dataOffset)
+		}
+		if len(b) < dataOffset {
+			return Attribute{}, fmt.Errorf("expected attribute data length to be at least %d but is %d", dataOffset, len(b))
+		}
+		attributeData = r.ReadFrom(int(dataOffset))
 	}
 
 	return Attribute{
 		Type:        AttributeType(r.Uint32(0)),
 		Resident:    resident,
-		Name:        nameStr,
 		Flags:       AttributeFlags(binutil.Duplicate(r.Read(0x0C, 2))),
 		AttributeId: int(r.Uint16(0x0E)),
-		Data:        binutil.Duplicate(r.ReadFrom(dataOffset)),
+		Data:        binutil.Duplicate(attributeData),
 	}, nil
 }
 
