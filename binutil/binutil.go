@@ -8,29 +8,47 @@ func Duplicate(in []byte) []byte {
 	return out
 }
 
-type BinReader []byte
-var endian = binary.LittleEndian
-
-func (b BinReader) Read(offset int, length int) []byte {
-	return b[offset : offset+length]
+type BinReader struct {
+	data []byte
+	bo binary.ByteOrder
 }
 
-func (b BinReader) Byte(offset int) byte {
-	return b.Read(offset, 1)[0]
+func NewBinReader(data []byte, bo binary.ByteOrder) *BinReader {
+	return &BinReader{data: data, bo: bo}
 }
 
-func (b BinReader) Uint16(offset int) uint16 {
-	return endian.Uint16(b.Read(offset, 2))
+func NewLittleEndianReader(data []byte) *BinReader {
+	return NewBinReader(data, binary.LittleEndian)
 }
 
-func (b BinReader) Uint32(offset int) uint32 {
-	return endian.Uint32(b.Read(offset, 4))
+func NewBigEndianReader(data []byte, bo binary.ByteOrder) *BinReader {
+	return NewBinReader(data, binary.BigEndian)
 }
 
-func (b BinReader) Uint64(offset int) uint64 {
-	return endian.Uint64(b.Read(offset, 8))
+func (r *BinReader) Read(offset int, length int) []byte {
+	return r.data[offset : offset+length]
 }
 
-func (b BinReader) Endianess() binary.ByteOrder {
-	return endian
+func (r *BinReader) Byte(offset int) byte {
+	return r.Read(offset, 1)[0]
+}
+
+func (r *BinReader) ReadFrom(offset int) []byte {
+	return r.data[offset:]
+}
+
+func (r *BinReader) Uint16(offset int) uint16 {
+	return r.bo.Uint16(r.Read(offset, 2))
+}
+
+func (r *BinReader) Uint32(offset int) uint32 {
+	return r.bo.Uint32(r.Read(offset, 4))
+}
+
+func (r *BinReader) Uint64(offset int) uint64 {
+	return r.bo.Uint64(r.Read(offset, 8))
+}
+
+func (r *BinReader) ByteOrder() binary.ByteOrder {
+	return r.bo
 }

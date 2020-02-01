@@ -26,20 +26,20 @@ type BytesOrClusters struct {
 }
 
 func Parse(data []byte) BootSector {
-	r := binutil.BinReader(data)
+	r := binutil.NewLittleEndianReader(data)
 	return BootSector{
 		OemId:                  string(r.Read(0x03, 8)),
 		BytesPerSector:         int(r.Uint16(0x0B)),
-		SectorsPerCluster:      int(r[0x0D]),
-		MediaDescriptor:        r[0x15],
+		SectorsPerCluster:      int(r.Byte(0x0D)),
+		MediaDescriptor:        r.Byte(0x15),
 		SectorsPerTrack:        int(r.Uint16(0x18)),
 		NumberofHeads:          int(r.Uint16(0x1A)),
 		HiddenSectors:          int(r.Uint16(0x1C)),
 		TotalSectors:           r.Uint64(0x28),
 		MftClusterNumber:       r.Uint64(0x30),
 		MftMirrorClusterNumber: r.Uint64(0x38),
-		FileRecordSegmentSize:  parseBytesOrClusters(r[0x40]),
-		IndexBufferSize:        parseBytesOrClusters(r[0x44]),
+		FileRecordSegmentSize:  parseBytesOrClusters(r.Byte(0x40)),
+		IndexBufferSize:        parseBytesOrClusters(r.Byte(0x44)),
 		VolumeSerialNumber:     binutil.Duplicate(r.Read(0x48, 8)),
 	}
 }

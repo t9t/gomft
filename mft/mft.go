@@ -26,7 +26,7 @@ type FileReference []byte
 type Flags []byte
 
 func ParseRecordHeader(b []byte) RecordHeader {
-	r := binutil.BinReader(b)
+	r := binutil.NewLittleEndianReader(b)
 	return RecordHeader{
 		Signature:             r.Read(0, 4),
 		UpdateSequenceOffset:  int(r.Uint16(0x04)),
@@ -57,13 +57,13 @@ type AttributeType uint32
 type AttributeFlags []byte
 
 func ParseAttribute(b []byte) (Attribute, error) {
-	r := binutil.BinReader(b)
+	r := binutil.NewLittleEndianReader(b)
 
 	nameLength := r.Byte(0x09)
 	nameOffset := r.Uint16(0x0A)
 
 	nameData := r.Read(int(nameOffset), int(nameLength))
-	nameStr, err := utf16.DecodeString(nameData, r.Endianess())
+	nameStr, err := utf16.DecodeString(nameData, r.ByteOrder())
 	if err != nil {
 		return Attribute{}, fmt.Errorf("unable to decode UTF16 attribute name: %w", err)
 	}
@@ -80,6 +80,6 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		Name:        nameStr,
 		Flags:       AttributeFlags(r.Read(0x0C, 2)),
 		AttributeId: int(r.Uint16(0x0E)),
-		Data:        binutil.Duplicate(r[dataOffset:]),
+		Data:        binutil.Duplicate(r.ReadFrom(dataOffset)),
 	}, nil
 }
