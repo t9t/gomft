@@ -1,6 +1,7 @@
 package mft
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/t9t/gomft/binutil"
@@ -147,4 +148,60 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		AttributeId: int(r.Uint16(0x0E)),
 		Data:        binutil.Duplicate(r.ReadFrom(dataOffset)),
 	}, nil
+}
+
+type DataRun struct {
+	OffsetCluster    int64
+	LengthInClusters uint64
+}
+
+func ParseDataRuns(b []byte) ([]DataRun, error) {
+	if len(b) == 0 {
+		return []DataRun{}, nil
+	}
+
+	r := binutil.NewLittleEndianReader(b)
+	runs := make([]DataRun, 0)
+	for r.Length() > 0 {
+		header := r.Byte(0)
+		if header == 0 {
+			break
+		}
+
+		lengthLength := int(header &^ 0xF0)
+		offsetLength := int(header >> 4)
+
+		dataRunDataLength := offsetLength + lengthLength
+		dataRunData := r.Reader(1, dataRunDataLength)
+
+		lengthBytes := dataRunData.Read(0, lengthLength)
+		dataLength := binary.LittleEndian.Uint64(padTo(lengthBytes, 8))
+
+		offsetBytes := dataRunData.Read(lengthLength, offsetLength)
+		dataOffset := int64(binary.LittleEndian.Uint64(padTo(offsetBytes, 8)))
+
+		runs = append(runs, DataRun{OffsetCluster: dataOffset, LengthInClusters: dataLength})
+		r = r.ReaderFrom(dataRunDataLength + 1)
+	}
+
+	return runs, nil
+}
+
+
+func padTo(data []byte, length int) []byte {
+	dl := len(data)
+	if dl > length {
+		return data
+	}
+	if dl == length {
+		return data
+	}
+	result := make([]byte, length)
+	copy(result, data)
+	if data[dl-1] & 0b10000000 == 0b10000000 {
+		for i := dl; i < length; i++ {
+			result[i] = 0xFF
+		}
+	}
+	return result
 }

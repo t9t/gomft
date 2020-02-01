@@ -1,6 +1,7 @@
 package mft_test
 
 import (
+	"encoding/hex"
 	"io/ioutil"
 	"testing"
 
@@ -44,6 +45,24 @@ func TestParseAttributes(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedAttributes, attributes)
+}
+func TestParseDataRuns(t *testing.T) {
+	input, err := hex.DecodeString("3320c80000000c42e061a4b54507330dc8006fedb142365db3d89cfb32802b3a045b433d830054029301000000000000")
+	require.Nilf(t, err, "unable to convert input hex to []byte: %v", err)
+
+	runs, err := mft.ParseDataRuns(input)
+	require.Nilf(t, err, "error parsing dataruns: %v", err)
+
+	expected := []mft.DataRun{
+		mft.DataRun{OffsetCluster: 786432, LengthInClusters: 51232},
+		mft.DataRun{OffsetCluster: 122008996, LengthInClusters: 25056},
+		mft.DataRun{OffsetCluster: -5116561, LengthInClusters: 51213},
+		mft.DataRun{OffsetCluster: -73606989, LengthInClusters: 23862},
+		mft.DataRun{OffsetCluster: 5964858, LengthInClusters: 11136},
+		mft.DataRun{OffsetCluster: 26411604, LengthInClusters: 33597},
+	}
+
+	assert.Equal(t, expected, runs)
 }
 
 func readTestMft(t *testing.T) []byte {
