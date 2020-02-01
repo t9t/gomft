@@ -4,17 +4,17 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
 	"github.com/t9t/gomft/bootsect"
 )
 
 func TestParse(t *testing.T) {
 	b, err := ioutil.ReadFile("test-bootsect.bin")
-	if err != nil {
-		t.Fatal("unable to read test-bootsect.bin:", err)
-	}
+	require.Nilf(t, err, "unable to read test-bootsect.bin: %v", err)
 
-	ret := bootsect.Parse(b)
+	ret, err := bootsect.Parse(b[0:80])
+	require.Nilf(t, err, "could not parse boot sector: %v", err)
 	expected := bootsect.BootSector{
 		OemId:                  "NTFS    ",
 		BytesPerSector:         512,

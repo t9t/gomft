@@ -1,6 +1,7 @@
 package bootsect
 
 import (
+	"fmt"
 	"github.com/t9t/gomft/binutil"
 )
 
@@ -25,7 +26,11 @@ type BytesOrClusters struct {
 	Value   int
 }
 
-func Parse(data []byte) BootSector {
+
+func Parse(data []byte) (BootSector, error) {
+	if len(data) < 80 {
+		return BootSector{}, fmt.Errorf("boot sector data should be at least 80 bytes but is %d", len(data))
+	}
 	r := binutil.NewLittleEndianReader(data)
 	return BootSector{
 		OemId:                  string(r.Read(0x03, 8)),
@@ -41,7 +46,7 @@ func Parse(data []byte) BootSector {
 		FileRecordSegmentSize:  parseBytesOrClusters(r.Byte(0x40)),
 		IndexBufferSize:        parseBytesOrClusters(r.Byte(0x44)),
 		VolumeSerialNumber:     binutil.Duplicate(r.Read(0x48, 8)),
-	}
+	}, nil
 }
 
 func parseBytesOrClusters(b byte) BytesOrClusters {
