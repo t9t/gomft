@@ -174,9 +174,6 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		attributeData = r.Read(dataOffset, dataLength)
 	} else {
 		dataOffset := int(r.Uint16(0x20))
-		if dataOffset != 0x40 {
-			return Attribute{}, fmt.Errorf("unexpected offset to dataruns value of %d", dataOffset)
-		}
 		if len(b) < dataOffset {
 			return Attribute{}, fmt.Errorf("expected attribute data length to be at least %d but is %d", dataOffset, len(b))
 		}
