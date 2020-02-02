@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/t9t/gomft/binutil"
+	"github.com/t9t/gomft/fragment"
 )
 
 const (
@@ -231,6 +232,20 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 	return runs, nil
 }
 
+func DataRunToFragment(run DataRun, bytesPerCluster int) fragment.Fragment {
+	return fragment.Fragment{
+		Offset: run.OffsetCluster * int64(bytesPerCluster),
+		Length: int(run.LengthInClusters) * bytesPerCluster,
+	}
+}
+
+func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragment {
+	frags := make([]fragment.Fragment, len(runs))
+	for i, run := range runs {
+		frags[i] = DataRunToFragment(run, bytesPerCluster)
+	}
+	return frags
+}
 
 func padTo(data []byte, length int) []byte {
 	dl := len(data)
