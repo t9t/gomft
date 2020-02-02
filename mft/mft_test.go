@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/t9t/gomft/mft"
 	"github.com/t9t/gomft/fragment"
+	"github.com/t9t/gomft/mft"
 )
 
 func TestParseRecordHeader(t *testing.T) {
@@ -82,6 +82,17 @@ func TestDataRunsToFragments(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, fragments)
+}
+
+func TestParseNamedResidentAttribute(t *testing.T) {
+	input, err := hex.DecodeString("8000000070000000000518000000050044000000280000002400530052004100540000000000000033ceb8f33800010310000c00040000000100000001000000000000000200000000000000000000000300000001000000000000000000000000000000f4c400000000000000000000")
+	require.Nilf(t, err, "unable to convert input hex to []byte: %v", err)
+
+	attribute, err := mft.ParseAttribute(input)
+	require.Nilf(t, err, "error parsing attribute: %v", err)
+
+	expected := mft.Attribute{Type: 0x80, Resident: true, Name: "$SRAT", Flags: mft.AttributeFlags{0x0, 0x0}, AttributeId: 5, Data: []uint8{0x33, 0xce, 0xb8, 0xf3, 0x38, 0x0, 0x1, 0x3, 0x10, 0x0, 0xc, 0x0, 0x4, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xf4, 0xc4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}}
+	assert.Equal(t, expected, attribute)
 }
 
 func readTestMft(t *testing.T) []byte {

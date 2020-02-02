@@ -6,6 +6,7 @@ import (
 
 	"github.com/t9t/gomft/binutil"
 	"github.com/t9t/gomft/fragment"
+	"github.com/t9t/gomft/utf16"
 )
 
 const (
@@ -90,6 +91,7 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 type Attribute struct {
 	Type        AttributeType
 	Resident    bool
+	Name        string
 	Flags       AttributeFlags
 	AttributeId int
 	Data        []byte
@@ -148,18 +150,20 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	nameLength := r.Byte(0x09)
 	nameOffset := r.Uint16(0x0A)
 
+	name := ""
 	if nameLength != 0 {
-		// TODO: implement named attributes
-		return Attribute{}, fmt.Errorf("unable to deal with named attributes yet (len: %d; offset: %d)", nameLength, nameOffset)
+		nameBytes := r.Read(int(nameOffset), int(nameLength) * 2)
+		decoded, err := utf16.DecodeString(nameBytes, binary.LittleEndian)
+		if err != nil {
+			return Attribute{}, fmt.Errorf("unable to parse attribute name: %w", err)
+		}
+		name = decoded
 	}
 
 	resident := r.Byte(0x08) == 0x00
 	var attributeData []byte
 	if resident {
 		dataOffset := int(r.Uint16(0x14))
-		if dataOffset != 0x18 {
-			return Attribute{}, fmt.Errorf("unexpected offset to resident attribute data value of %d", dataOffset)
-		}
 		dataLength := int(r.Uint32(0x10))
 		expectedDataLength := dataOffset + dataLength
 		
@@ -182,6 +186,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	return Attribute{
 		Type:        AttributeType(r.Uint32(0)),
 		Resident:    resident,
+		Name:        name,
 		Flags:       AttributeFlags(binutil.Duplicate(r.Read(0x0C, 2))),
 		AttributeId: int(r.Uint16(0x0E)),
 		Data:        binutil.Duplicate(attributeData),
@@ -256,7 +261,7 @@ func padTo(data []byte, length int) []byte {
 	}
 	result := make([]byte, length)
 	copy(result, data)
-	if data[dl-1] & 0b10000000 == 0b10000000 {
+	if data[dl-1]&0b10000000 == 0b10000000 {
 		for i := dl; i < length; i++ {
 			result[i] = 0xFF
 		}
