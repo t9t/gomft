@@ -232,17 +232,16 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 	return runs, nil
 }
 
-func DataRunToFragment(run DataRun, bytesPerCluster int) fragment.Fragment {
-	return fragment.Fragment{
-		Offset: run.OffsetCluster * int64(bytesPerCluster),
-		Length: int(run.LengthInClusters) * bytesPerCluster,
-	}
-}
-
 func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragment {
 	frags := make([]fragment.Fragment, len(runs))
+	previousOffsetCluster := int64(0)
 	for i, run := range runs {
-		frags[i] = DataRunToFragment(run, bytesPerCluster)
+		exactClusterOffset := previousOffsetCluster + run.OffsetCluster
+		frags[i] = fragment.Fragment{
+			Offset: exactClusterOffset * int64(bytesPerCluster),
+			Length: int(run.LengthInClusters) * bytesPerCluster,
+		}
+		previousOffsetCluster = exactClusterOffset
 	}
 	return frags
 }

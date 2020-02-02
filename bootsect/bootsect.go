@@ -26,7 +26,6 @@ type BytesOrClusters struct {
 	Value   int
 }
 
-
 func Parse(data []byte) (BootSector, error) {
 	if len(data) < 80 {
 		return BootSector{}, fmt.Errorf("boot sector data should be at least 80 bytes but is %d", len(data))
@@ -56,4 +55,11 @@ func parseBytesOrClusters(b byte) BytesOrClusters {
 		return BytesOrClusters{IsBytes: true, Value: value}
 	}
 	return BytesOrClusters{IsBytes: false, Value: int(b)}
+}
+
+func (boc *BytesOrClusters) ToBytes(bytesPerCluster int) int {
+	if boc.IsBytes {
+		return boc.Value
+	}
+	return boc.Value * bytesPerCluster
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/t9t/gomft/mft"
+	"github.com/t9t/gomft/fragment"
 )
 
 func TestParseRecordHeader(t *testing.T) {
@@ -64,6 +65,23 @@ func TestParseDataRuns(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, runs)
+}
+
+func TestDataRunsToFragments(t *testing.T) {
+	runs := []mft.DataRun{
+		mft.DataRun{OffsetCluster: 5521, LengthInClusters: 1337},
+		mft.DataRun{OffsetCluster: -4408, LengthInClusters: 42},
+		mft.DataRun{OffsetCluster: 7708, LengthInClusters: 13},
+	}
+
+	fragments := mft.DataRunsToFragments(runs, 512)
+	expected := []fragment.Fragment{
+		fragment.Fragment{Offset: 2826752, Length: 684544},
+		fragment.Fragment{Offset: 569856, Length: 21504},
+		fragment.Fragment{Offset: 4516352, Length: 6656},
+	}
+
+	assert.Equal(t, expected, fragments)
 }
 
 func readTestMft(t *testing.T) []byte {
