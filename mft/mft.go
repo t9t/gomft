@@ -29,6 +29,10 @@ const (
 	ATTRIBUTE_TYPE_TERMINATOR            AttributeType = 0xFFFFFFFF
 )
 
+var (
+	fileSignature = []byte{0x46, 0x49, 0x4c, 0x45}
+)
+
 type Record struct {
 	Header     RecordHeader
 	Attributes []Attribute
@@ -80,9 +84,13 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 	if len(b) < 42 {
 		return RecordHeader{}, fmt.Errorf("record header data length should be at least 42 but is %d", len(b))
 	}
+	sig := b[:4]
+	if bytes.Compare(sig, fileSignature) != 0 {
+		return RecordHeader{}, fmt.Errorf("unknown record signature: %# x", sig)
+	}
 	r := binutil.NewLittleEndianReader(b)
 	return RecordHeader{
-		Signature:             binutil.Duplicate(r.Read(0, 4)),
+		Signature:             binutil.Duplicate(sig),
 		UpdateSequenceOffset:  int(r.Uint16(0x04)),
 		UpdateSequenceSize:    int(r.Uint16(0x06)),
 		LogFileSequenceNumber: r.Uint64(0x08),
