@@ -62,6 +62,7 @@ type RecordHeader struct {
 	AllocatedSize         uint32
 	BaseRecordReference   FileReference
 	NextAttributeId       int
+	RecordNumber          uint32
 }
 
 type FileReference []byte
@@ -85,6 +86,7 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 		AllocatedSize:         r.Uint32(0x1C),
 		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
 		NextAttributeId:       int(r.Uint16(0x28)),
+		RecordNumber:          r.Uint32(0x2C),
 	}, nil
 }
 
@@ -115,7 +117,7 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 		if attrType == uint32(ATTRIBUTE_TYPE_TERMINATOR) {
 			break
 		}
-		
+
 		if len(b) < 8 {
 			return nil, fmt.Errorf("cannot read attribute header record length, data should be at least 8 bytes but is %d", len(b))
 		}
@@ -152,7 +154,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 
 	name := ""
 	if nameLength != 0 {
-		nameBytes := r.Read(int(nameOffset), int(nameLength) * 2)
+		nameBytes := r.Read(int(nameOffset), int(nameLength)*2)
 		decoded, err := utf16.DecodeString(nameBytes, binary.LittleEndian)
 		if err != nil {
 			return Attribute{}, fmt.Errorf("unable to parse attribute name: %w", err)
@@ -166,7 +168,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		dataOffset := int(r.Uint16(0x14))
 		dataLength := int(r.Uint32(0x10))
 		expectedDataLength := dataOffset + dataLength
-		
+
 		if len(b) < expectedDataLength {
 			return Attribute{}, fmt.Errorf("expected attribute data length to be at least %d but is %d", expectedDataLength, len(b))
 		}
