@@ -1,6 +1,7 @@
 package mft
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 
@@ -34,6 +35,7 @@ type Record struct {
 }
 
 func ParseRecord(b []byte) (Record, error) {
+	b = binutil.Duplicate(b)
 	header, err := ParseRecordHeader(b)
 	if err != nil {
 		return Record{}, err
@@ -42,6 +44,12 @@ func ParseRecord(b []byte) (Record, error) {
 	if f < 0 || f >= len(b) {
 		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
 	}
+
+	b, err = applyFixUp(b, header.UpdateSequenceOffset, header.UpdateSequenceSize)
+	if err != nil {
+		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
+	}
+
 	attributes, err := ParseAttributes(b[f:])
 	if err != nil {
 		return Record{}, err
@@ -88,6 +96,32 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 		NextAttributeId:       int(r.Uint16(0x28)),
 		RecordNumber:          r.Uint32(0x2C),
 	}, nil
+}
+
+func applyFixUp(b []byte, offset int, length int) ([]byte, error) {
+	r := binutil.NewLittleEndianReader(b)
+
+	updateSequence := r.Read(offset, length*2) // length is in pairs, not bytes
+	updateSequenceNumber := updateSequence[:2]
+	updateSequenceArray := updateSequence[2:]
+
+	sectorCount := len(updateSequenceArray) / 2
+	sectorSize := len(b) / sectorCount
+
+	for i := 1; i <= sectorCount; i++ {
+		offset := sectorSize*i - 2
+		if bytes.Compare(updateSequenceNumber, b[offset:offset+2]) != 0 {
+			return nil, fmt.Errorf("update sequence mismatch at pos %d", offset)
+		}
+	}
+
+	for i := 0; i < sectorCount; i++ {
+		offset := sectorSize*(i+1) - 2
+		num := i * 2
+		copy(b[offset:offset+2], updateSequenceArray[num:num+2])
+	}
+
+	return b, nil
 }
 
 type Attribute struct {
