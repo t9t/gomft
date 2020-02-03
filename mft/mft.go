@@ -11,22 +11,22 @@ import (
 )
 
 const (
-	ATTRIBUTE_TYPE_STANDARD_INFORMATION  AttributeType = 0x10
-	ATTRIBUTE_TYPE_ATTRIBUTE_LIST        AttributeType = 0x20
-	ATTRIBUTE_TYPE_FILE_NAME             AttributeType = 0x30
-	ATTRIBUTE_TYPE_OBJECT_ID             AttributeType = 0x40
-	ATTRIBUTE_TYPE_VOLUME_NAME           AttributeType = 0x60
-	ATTRIBUTE_TYPE_VOLUME_INFORMATION    AttributeType = 0x70
-	ATTRIBUTE_TYPE_DATA                  AttributeType = 0x80
-	ATTRIBUTE_TYPE_INDEX_ROOT            AttributeType = 0x90
-	ATTRIBUTE_TYPE_INDEX_ALLOCATION      AttributeType = 0xA0
-	ATTRIBUTE_TYPE_BITMAP                AttributeType = 0xB0
-	ATTRIBUTE_TYPE_REPARSE_POINT         AttributeType = 0xC0
-	ATTRIBUTE_TYPE_EA_INFORMATION        AttributeType = 0xD0
-	ATTRIBUTE_TYPE_EA                    AttributeType = 0xE0
-	ATTRIBUTE_TYPE_PROPERTY_SET          AttributeType = 0xF0
-	ATTRIBUTE_TYPE_LOGGED_UTILITY_STREAM AttributeType = 0x100
-	ATTRIBUTE_TYPE_TERMINATOR            AttributeType = 0xFFFFFFFF
+	AttributeTypeStandardInformation AttributeType = 0x10
+	AttributeTypeAttributeList       AttributeType = 0x20
+	AttributeTypeFileName            AttributeType = 0x30
+	AttributeTypeObjectId            AttributeType = 0x40
+	AttributeTypeVolumeName          AttributeType = 0x60
+	AttributeTypeVolumeInformation   AttributeType = 0x70
+	AttributeTypeData                AttributeType = 0x80
+	AttributeTypeIndexRoot           AttributeType = 0x90
+	AttributeTypeIndexAllocation     AttributeType = 0xa0
+	AttributeTypeBitmap              AttributeType = 0xb0
+	AttributeTypeReparsePoint        AttributeType = 0xc0
+	AttributeTypeEAInformation       AttributeType = 0xd0
+	AttributeTypeEA                  AttributeType = 0xe0
+	AttributeTypePropertySet         AttributeType = 0xf0
+	AttributeTypeLoggedUtilityStream AttributeType = 0x100
+	AttributeTypeTerminator          AttributeType = 0xffffffff
 )
 
 var (
@@ -156,7 +156,7 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 
 		r := binutil.NewLittleEndianReader(b)
 		attrType := r.Uint32(0)
-		if attrType == uint32(ATTRIBUTE_TYPE_TERMINATOR) {
+		if attrType == uint32(AttributeTypeTerminator) {
 			break
 		}
 
