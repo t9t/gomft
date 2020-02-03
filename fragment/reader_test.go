@@ -1,10 +1,10 @@
 package fragment_test
 
 import (
-	"io/ioutil"
-	"testing"
 	"bytes"
+	"io/ioutil"
 	"math/rand"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func init() {
 }
 
 func TestFragmentReader_Sequential(t *testing.T) {
-	
+
 	testData := generateTestData()
 
 	fragments := []fragment.Fragment{
@@ -37,7 +37,7 @@ func TestFragmentReader_Sequential(t *testing.T) {
 
 	data, err := ioutil.ReadAll(r)
 	require.Nilf(t, err, "unable to read: %v", err)
-	
+
 	assert.Equal(t, testData, data)
 }
 
@@ -59,7 +59,7 @@ func TestFragmentReader_NonSequential(t *testing.T) {
 	expected = append(expected, testData[3756:3756+1810]...)
 	expected = append(expected, testData[6645:6645+3423]...)
 	expected = append(expected, testData[803:803+6154]...)
-	
+
 	assert.Equal(t, expected, data)
 }
 

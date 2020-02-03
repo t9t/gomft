@@ -10,7 +10,7 @@ func Duplicate(in []byte) []byte {
 
 type BinReader struct {
 	data []byte
-	bo binary.ByteOrder
+	bo   binary.ByteOrder
 }
 
 func NewBinReader(data []byte, bo binary.ByteOrder) *BinReader {

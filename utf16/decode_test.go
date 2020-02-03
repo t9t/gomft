@@ -3,11 +3,11 @@ package utf16_test
 import (
 	"testing"
 
+	"encoding/binary"
+	"encoding/hex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/t9t/gomft/utf16"
-	"encoding/hex"
-	"encoding/binary"
 )
 
 func TestDecodeString_LittleEndian(t *testing.T) {
