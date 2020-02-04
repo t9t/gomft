@@ -11,22 +11,23 @@ import (
 )
 
 const (
-	AttributeTypeStandardInformation AttributeType = 0x10
-	AttributeTypeAttributeList       AttributeType = 0x20
-	AttributeTypeFileName            AttributeType = 0x30
-	AttributeTypeObjectId            AttributeType = 0x40
-	AttributeTypeVolumeName          AttributeType = 0x60
-	AttributeTypeVolumeInformation   AttributeType = 0x70
-	AttributeTypeData                AttributeType = 0x80
-	AttributeTypeIndexRoot           AttributeType = 0x90
-	AttributeTypeIndexAllocation     AttributeType = 0xa0
-	AttributeTypeBitmap              AttributeType = 0xb0
-	AttributeTypeReparsePoint        AttributeType = 0xc0
-	AttributeTypeEAInformation       AttributeType = 0xd0
-	AttributeTypeEA                  AttributeType = 0xe0
+	AttributeTypeStandardInformation AttributeType = 0x10 // always resident
+	AttributeTypeAttributeList       AttributeType = 0x20 // mixed residency
+	AttributeTypeFileName            AttributeType = 0x30 // always resident
+	AttributeTypeObjectId            AttributeType = 0x40 // always resident
+	AttributeTypeSecurityDescriptor  AttributeType = 0x50 // always resident?
+	AttributeTypeVolumeName          AttributeType = 0x60 // always resident?
+	AttributeTypeVolumeInformation   AttributeType = 0x70 // never resident?
+	AttributeTypeData                AttributeType = 0x80 // mixed residency
+	AttributeTypeIndexRoot           AttributeType = 0x90 // always resident
+	AttributeTypeIndexAllocation     AttributeType = 0xa0 // never resident?
+	AttributeTypeBitmap              AttributeType = 0xb0 // nearly always resident?
+	AttributeTypeReparsePoint        AttributeType = 0xc0 // always resident?
+	AttributeTypeEAInformation       AttributeType = 0xd0 // always resident
+	AttributeTypeEA                  AttributeType = 0xe0 // nearly always resident?
 	AttributeTypePropertySet         AttributeType = 0xf0
-	AttributeTypeLoggedUtilityStream AttributeType = 0x100
-	AttributeTypeTerminator          AttributeType = 0xffffffff
+	AttributeTypeLoggedUtilityStream AttributeType = 0x100 // always resident
+	AttributeTypeTerminator          AttributeType = 0xFFFFFFFF
 )
 
 var (
