@@ -8,6 +8,15 @@ func Duplicate(in []byte) []byte {
 	return out
 }
 
+func IsOnlyZeroes(data []byte) bool {
+	for _, b := range data {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 type BinReader struct {
 	data []byte
 	bo   binary.ByteOrder
