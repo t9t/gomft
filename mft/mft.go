@@ -244,7 +244,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 
 func (a *Attribute) ParseDataAsStandardInformation() (StandardInformation, error) {
 	if a.Type != AttributeTypeStandardInformation {
-		return StandardInformation{}, fmt.Errorf("attribute is not of type $STANDARD_INFORMATION (%#x)", AttributeTypeStandardInformation)
+		return StandardInformation{}, fmt.Errorf("attribute type %#x is not $STANDARD_INFORMATION (%#x)", a.Type, AttributeTypeStandardInformation)
 	}
 	if !a.Resident {
 		return StandardInformation{}, fmt.Errorf("cannot deal with non-resident $STANDARD_INFORMATION attribute")
@@ -255,7 +255,7 @@ func (a *Attribute) ParseDataAsStandardInformation() (StandardInformation, error
 
 func (a *Attribute) ParseDataAsFileName() (FileName, error) {
 	if a.Type != AttributeTypeFileName {
-		return FileName{}, fmt.Errorf("attribute is not of type $FILE_NAME (%#x)", AttributeTypeFileName)
+		return FileName{}, fmt.Errorf("attribute type %#x is not $FILE_NAME (%#x)", a.Type, AttributeTypeFileName)
 	}
 	if !a.Resident {
 		return FileName{}, fmt.Errorf("cannot deal with non-resident $FILE_NAME attribute")

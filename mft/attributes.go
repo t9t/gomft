@@ -47,11 +47,27 @@ type StandardInformation struct {
 }
 
 func ParseStandardInformation(b []byte) (StandardInformation, error) {
-	if len(b) < 72 {
-		return StandardInformation{}, fmt.Errorf("expected at least %d bytes but got %d", 72, len(b))
+	if len(b) < 48 {
+		return StandardInformation{}, fmt.Errorf("expected at least %d bytes but got %d", 48, len(b))
 	}
 
 	r := binutil.NewLittleEndianReader(b)
+	ownerId := uint32(0)
+	securityId := uint32(0)
+	quotaCharged := uint64(0)
+	updateSequenceNumber := uint64(0)
+	if len(b) >= 0x30+4 {
+		ownerId = r.Uint32(0x30)
+	}
+	if len(b) >= 0x34+4 {
+		securityId = r.Uint32(0x34)
+	}
+	if len(b) >= 0x38+8 {
+		quotaCharged = r.Uint64(0x38)
+	}
+	if len(b) >= 0x40+8 {
+		updateSequenceNumber = r.Uint64(0x40)
+	}
 	return StandardInformation{
 		Creation:                ConvertFileTime(r.Uint64(0x00)),
 		FileLastModified:        ConvertFileTime(r.Uint64(0x08)),
@@ -61,10 +77,10 @@ func ParseStandardInformation(b []byte) (StandardInformation, error) {
 		MaximumNumberOfVersions: r.Uint32(0x24),
 		VersionNumber:           r.Uint32(0x28),
 		ClassId:                 r.Uint32(0x2C),
-		OwnerId:                 r.Uint32(0x30),
-		SecurityId:              r.Uint32(0x34),
-		QuotaCharged:            r.Uint64(0x38),
-		UpdateSequenceNumber:    r.Uint64(0x40),
+		OwnerId:                 ownerId,
+		SecurityId:              securityId,
+		QuotaCharged:            quotaCharged,
+		UpdateSequenceNumber:    updateSequenceNumber,
 	}, nil
 }
 
