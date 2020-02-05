@@ -53,10 +53,10 @@ func ParseStandardInformation(b []byte) (StandardInformation, error) {
 
 	r := binutil.NewLittleEndianReader(b)
 	return StandardInformation{
-		Creation:                convertFileTime(r.Uint64(0x00)),
-		FileLastModified:        convertFileTime(r.Uint64(0x08)),
-		MftLastModified:         convertFileTime(r.Uint64(0x10)),
-		LastAccess:              convertFileTime(r.Uint64(0x18)),
+		Creation:                ConvertFileTime(r.Uint64(0x00)),
+		FileLastModified:        ConvertFileTime(r.Uint64(0x08)),
+		MftLastModified:         ConvertFileTime(r.Uint64(0x10)),
+		LastAccess:              ConvertFileTime(r.Uint64(0x18)),
 		FileAttributes:          FileAttribute(r.Uint32(0x20)),
 		MaximumNumberOfVersions: r.Uint32(0x24),
 		VersionNumber:           r.Uint32(0x28),
@@ -101,10 +101,10 @@ func ParseFileName(b []byte) (FileName, error) {
 	}
 	return FileName{
 		ParentFileReference: r.Uint64(0x00),
-		Creation:            convertFileTime(r.Uint64(0x08)),
-		FileLastModified:    convertFileTime(r.Uint64(0x10)),
-		MftLastModified:     convertFileTime(r.Uint64(0x18)),
-		LastAccess:          convertFileTime(r.Uint64(0x20)),
+		Creation:            ConvertFileTime(r.Uint64(0x08)),
+		FileLastModified:    ConvertFileTime(r.Uint64(0x10)),
+		MftLastModified:     ConvertFileTime(r.Uint64(0x18)),
+		LastAccess:          ConvertFileTime(r.Uint64(0x20)),
 		AllocatedSize:       r.Uint64(0x28),
 		RealSize:            r.Uint64(0x30),
 		Flags:               FileAttribute(r.Uint32(0x38)),
@@ -158,7 +158,7 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 	return entries, nil
 }
 
-func convertFileTime(timeValue uint64) time.Time {
+func ConvertFileTime(timeValue uint64) time.Time {
 	dur := time.Duration(int64(timeValue))
 	r := time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
 	for i := 0; i < 100; i++ {
