@@ -23,7 +23,7 @@ func TestParseRecordHeader(t *testing.T) {
 		RecordUsageNumber:     145,
 		HardLinkCount:         1,
 		FirstAttributeOffset:  56,
-		Flags:                 []byte{0x01, 0x00},
+		Flags:                 mft.RecordFlag(mft.FlagInUse),
 		ActualSize:            480,
 		AllocatedSize:         1024,
 		BaseRecordReference:   []byte{0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0, 0x10, 0x90},

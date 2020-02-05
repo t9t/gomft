@@ -70,7 +70,7 @@ type RecordHeader struct {
 	RecordUsageNumber     int
 	HardLinkCount         int
 	FirstAttributeOffset  int
-	Flags                 Flags
+	Flags                 RecordFlag
 	ActualSize            uint32
 	AllocatedSize         uint32
 	BaseRecordReference   FileReference
@@ -79,7 +79,14 @@ type RecordHeader struct {
 }
 
 type FileReference []byte
-type Flags []byte
+type RecordFlag uint16
+
+const (
+	FlagInUse       RecordFlag = 0x0001
+	FlagIsDirectory RecordFlag = 0x0002
+	FlagInExtend    RecordFlag = 0x0004
+	FlagIsIndex     RecordFlag = 0x0008
+)
 
 func ParseRecordHeader(b []byte) (RecordHeader, error) {
 	if len(b) < 42 {
@@ -98,7 +105,7 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 		RecordUsageNumber:     int(r.Uint16(0x10)),
 		HardLinkCount:         int(r.Uint16(0x12)),
 		FirstAttributeOffset:  int(r.Uint16(0x14)),
-		Flags:                 binutil.Duplicate(r.Read(0x16, 2)),
+		Flags:                 RecordFlag(r.Uint16(0x16)),
 		ActualSize:            r.Uint32(0x18),
 		AllocatedSize:         r.Uint32(0x1C),
 		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
