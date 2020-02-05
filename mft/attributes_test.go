@@ -36,17 +36,33 @@ func TestParseFileName(t *testing.T) {
 	require.Nilf(t, err, "could not parse attribute: %v", err)
 	expected := mft.FileName{
 		ParentFileReference: 1125899907459298,
-		Creation:                time.Date(2019, time.December, 14, 9, 42, 29, 175000000, time.UTC),
-		FileLastModified:        time.Date(2014, time.August, 26, 21, 47, 02, 0, time.UTC),
-		MftLastModified:         time.Date(2019, time.December, 14, 9, 42, 29, 176000000, time.UTC),
-		LastAccess:              time.Date(2019, time.December, 14, 9, 42, 29, 175000000, time.UTC),
+		Creation:            time.Date(2019, time.December, 14, 9, 42, 29, 175000000, time.UTC),
+		FileLastModified:    time.Date(2014, time.August, 26, 21, 47, 02, 0, time.UTC),
+		MftLastModified:     time.Date(2019, time.December, 14, 9, 42, 29, 176000000, time.UTC),
+		LastAccess:          time.Date(2019, time.December, 14, 9, 42, 29, 175000000, time.UTC),
 		AllocatedSize:       106496,
 		RealSize:            104490,
 		Flags:               mft.FileAttribute(32),
 		ExtendedData:        0,
 		Namespace:           3,
 		Name:                "logo-250.png",
+	}
+	assert.Equal(t, expected, out)
+}
 
+func TestParseAttributeList(t *testing.T) {
+	input := decodeHex(t, "100000002000001a00000000000000003b410500000009000000444300000000300000002000001a00000000000000003b410500000009000500000000000000800000002000001a00000000000000004e1905000000a9000000000000000000800000002000001abaec01000000000052400500000049000000000000000000800000002000001ab7180300000000000241050000000f000000000000000000800000002000001a103e0400000000000941050000001d000000000000000000")
+	out, err := mft.ParseAttributeList(input)
+	require.Nilf(t, err, "could not parse attribute: %v", err)
+
+	zeroes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	expected := []mft.AttributeListEntry{
+		mft.AttributeListEntry{Type: mft.AttributeTypeStandardInformation, BaseRecordReference: zeroes},
+		mft.AttributeListEntry{Type: mft.AttributeTypeFileName, BaseRecordReference: zeroes, AttributeId: 5},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, BaseRecordReference: zeroes},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x1ecba, BaseRecordReference: []byte{0xba, 0xec, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x318b7, BaseRecordReference: []byte{0xb7, 0x18, 0x3, 0x0, 0x0, 0x0, 0x0, 0x0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x43e10, BaseRecordReference: []byte{0x10, 0x3e, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0}},
 	}
 	assert.Equal(t, expected, out)
 }

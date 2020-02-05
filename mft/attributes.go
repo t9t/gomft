@@ -114,6 +114,50 @@ func ParseFileName(b []byte) (FileName, error) {
 	}, nil
 }
 
+type AttributeListEntry struct {
+	Type                AttributeType
+	Name                string
+	StartingVCN         uint64
+	BaseRecordReference FileReference
+	AttributeId         uint16
+}
+
+func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
+	if len(b) < 26 {
+		return []AttributeListEntry{}, fmt.Errorf("expected at least %d bytes but got %d", 26, len(b))
+	}
+
+	entries := make([]AttributeListEntry, 0)
+
+	for len(b) > 0 {
+		r := binutil.NewLittleEndianReader(b)
+		entryLength := int(r.Uint16(0x04))
+		if len(b) < entryLength {
+			return entries, fmt.Errorf("expected at least %d bytes remaining for AttributeList entry but is %d", entryLength, len(b))
+		}
+		nameLength := int(r.Byte(0x06))
+		name := ""
+		if nameLength != 0 {
+			nameOffset := int(r.Byte(0x07))
+			parsed, err := utf16.DecodeString(r.Read(nameOffset, nameLength*2), binary.LittleEndian)
+			if err != nil {
+				return entries, fmt.Errorf("unable to parsed attribute name: %w", err)
+			}
+			name = parsed
+		}
+		entry := AttributeListEntry{
+			Type:                AttributeType(r.Uint32(0)),
+			Name:                name,
+			StartingVCN:         r.Uint64(0x08),
+			BaseRecordReference: FileReference(binutil.Duplicate(r.Read(0x08, 8))),
+			AttributeId:         r.Uint16(0x18),
+		}
+		entries = append(entries, entry)
+		b = r.ReadFrom(entryLength)
+	}
+	return entries, nil
+}
+
 func convertFileTime(timeValue uint64) time.Time {
 	dur := time.Duration(int64(timeValue))
 	r := time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
