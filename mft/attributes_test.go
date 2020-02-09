@@ -66,3 +66,39 @@ func TestParseAttributeList(t *testing.T) {
 	}
 	assert.Equal(t, expected, out)
 }
+
+func TestParseIndexRoot(t *testing.T) {
+	input := decodeHex(t, "30000000010000000010000001000000100000008800000088000000000000005fac0600000006006800520000000000398c060000003b00de3ef1e234dcd501de3ef1e234dcd50118dbd2e334dcd501de3ef1e234dcd501000000000000000000000000000000002000000000000000080374006500730074002e0074007800740000002800000000000000000000001000000002000000")
+	out, err := mft.ParseIndexRoot(input)
+	require.Nilf(t, err, "could not parse attribute: %v", err)
+
+	expected := mft.IndexRoot{
+		AttributeType:     mft.AttributeTypeFileName,
+		CollationType:     1,
+		BytesPerRecord:    4096,
+		ClustersPerRecord: 1,
+		Flags:             0,
+		Entries: []mft.IndexEntry{
+			mft.IndexEntry{
+				FileReference: mft.FileReference{0x5f, 0xac, 0x6, 0x0, 0x0, 0x0, 0x6, 0x0},
+				Flags:         0,
+				FileName: mft.FileName{
+					ParentFileReference: 0x3b000000068c39,
+					Creation:            time.Date(2020, time.February, 5, 14, 59, 38, 116886200, time.UTC),
+					FileLastModified:    time.Date(2020, time.February, 5, 14, 59, 38, 116886200, time.UTC),
+					MftLastModified:     time.Date(2020, time.February, 5, 14, 59, 39, 595445600, time.UTC),
+					LastAccess:          time.Date(2020, time.February, 5, 14, 59, 38, 116886200, time.UTC),
+					AllocatedSize:       0,
+					RealSize:            0,
+					Flags:               32,
+					ExtendedData:        0,
+					Namespace:           3,
+					Name:                "test.txt",
+				},
+				SubNodeVCN: 0x0,
+			},
+			mft.IndexEntry{FileReference: mft.FileReference{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, Flags: 2, FileName: mft.FileName{}, SubNodeVCN: 0x0},
+		},
+	}
+	assert.Equal(t, expected, out)
+}

@@ -174,6 +174,112 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 	return entries, nil
 }
 
+type CollationType uint32
+
+const (
+	CollationTypeBinary            CollationType = 0x00000000
+	CollationTypeFileName          CollationType = 0x00000001
+	CollationTypeUnicodeString     CollationType = 0x00000002
+	CollationTypeNtofsULong        CollationType = 0x00000010
+	CollationTypeNtofsSid          CollationType = 0x00000011
+	CollationTypeNtofsSecurityHash CollationType = 0x00000012
+	CollationTypeNtofsUlongs       CollationType = 0x00000013
+)
+
+type IndexRoot struct {
+	AttributeType     AttributeType
+	CollationType     CollationType
+	BytesPerRecord    uint32
+	ClustersPerRecord uint32
+	Flags             uint32
+	Entries           []IndexEntry
+}
+
+func ParseIndexRoot(b []byte) (IndexRoot, error) {
+	if len(b) < 32 {
+		return IndexRoot{}, fmt.Errorf("expected at least %d bytes but got %d", 32, len(b))
+	}
+	r := binutil.NewLittleEndianReader(b)
+	attributeType := AttributeType(r.Uint32(0x00))
+	if attributeType != AttributeTypeFileName {
+		return IndexRoot{}, fmt.Errorf("unable to handle attribute type %d (%s) in $INDEX_ROOT", attributeType, attributeType.Name())
+	}
+
+	totalSize := int(r.Uint32(0x14))
+	expectedSize := totalSize + 16
+	if len(b) < expectedSize {
+		return IndexRoot{}, fmt.Errorf("expected %d bytes in $INDEX_ROOT but is %d", expectedSize, len(b))
+	}
+	entries := []IndexEntry{}
+	if totalSize >= 16 {
+		parsed, err := parseIndexEntries(r.Read(0x20, totalSize-16))
+		if err != nil {
+			return IndexRoot{}, fmt.Errorf("error parsing index entries: %w", err)
+		}
+		entries = parsed
+	}
+
+	return IndexRoot{
+		AttributeType:     attributeType,
+		CollationType:     CollationType(r.Uint32(0x04)),
+		BytesPerRecord:    r.Uint32(0x08),
+		ClustersPerRecord: r.Uint32(0x0C),
+		Flags:             r.Uint32(0x1C),
+		Entries:           entries,
+	}, nil
+}
+
+type IndexEntry struct {
+	FileReference FileReference
+	Flags         uint32
+	FileName      FileName
+	SubNodeVCN    uint64
+}
+
+func parseIndexEntries(b []byte) ([]IndexEntry, error) {
+	if len(b) < 13 {
+		return []IndexEntry{}, fmt.Errorf("expected at least %d bytes but got %d", 13, len(b))
+	}
+	entries := make([]IndexEntry, 0)
+	for len(b) > 0 {
+		r := binutil.NewLittleEndianReader(b)
+		entryLength := int(r.Uint16(0x08))
+
+		if len(b) < entryLength {
+			return entries, fmt.Errorf("index entry length indicates %d bytes but got %d", entryLength, len(b))
+		}
+
+
+		flags := r.Uint32(0x0C)
+		pointsToSubNode := flags&0b1 != 0
+		isLastEntryInNode := flags&0b10 != 0
+		contentLength := int(r.Uint16(0x0A))
+
+		fileName := FileName{}
+		if contentLength != 0 && !isLastEntryInNode {
+			parsedFileName, err := ParseFileName(r.Read(0x10, contentLength))
+			if err != nil {
+				return entries, fmt.Errorf("error parsing $FILE_NAME record in index entry: %w", err)
+			}
+			fileName = parsedFileName
+		}
+		subNodeVcn := uint64(0)
+		if pointsToSubNode {
+			subNodeVcn = r.Uint64(entryLength - 8)
+		}
+
+		entry := IndexEntry{
+			FileReference: FileReference(r.Read(0x00, 8)),
+			Flags:         flags,
+			FileName:      fileName,
+			SubNodeVCN:    subNodeVcn,
+		}
+		entries = append(entries, entry)
+		b = r.ReadFrom(entryLength)
+	}
+	return entries, nil
+}
+
 func ConvertFileTime(timeValue uint64) time.Time {
 	dur := time.Duration(int64(timeValue))
 	r := time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
