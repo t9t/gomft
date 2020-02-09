@@ -23,7 +23,7 @@ func TestParseRecordHeader(t *testing.T) {
 		SequenceNumber:        145,
 		HardLinkCount:         1,
 		FirstAttributeOffset:  56,
-		Flags:                 mft.RecordFlag(mft.FlagInUse),
+		Flags:                 mft.RecordFlag(mft.RecordFlagInUse),
 		ActualSize:            480,
 		AllocatedSize:         1024,
 		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
@@ -130,4 +130,30 @@ func decodeHex(t *testing.T, s string) []byte {
 	input, err := hex.DecodeString(s)
 	require.Nilf(t, err, "unable to convert input hex to []byte: %v", err)
 	return input
+}
+
+func TestRecordFlag(t *testing.T) {
+	f := mft.RecordFlag(0)
+	assert.False(t, f.IsInUse())
+	assert.False(t, f.IsDirectory())
+	assert.False(t, f.IsInExtend())
+	assert.False(t, f.IsIndex())
+
+	f = mft.RecordFlag(1)
+	assert.True(t, f.IsInUse())
+	assert.False(t, f.IsDirectory())
+	assert.False(t, f.IsInExtend())
+	assert.False(t, f.IsIndex())
+
+	f = mft.RecordFlag(3)
+	assert.True(t, f.IsInUse())
+	assert.True(t, f.IsDirectory())
+	assert.False(t, f.IsInExtend())
+	assert.False(t, f.IsIndex())
+
+	f = mft.RecordFlag(15)
+	assert.True(t, f.IsInUse())
+	assert.True(t, f.IsDirectory())
+	assert.True(t, f.IsInExtend())
+	assert.True(t, f.IsIndex())
 }

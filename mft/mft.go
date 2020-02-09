@@ -97,11 +97,27 @@ func ParseFileReference(b []byte) (FileReference, error) {
 type RecordFlag uint16
 
 const (
-	FlagInUse       RecordFlag = 0x0001
-	FlagIsDirectory RecordFlag = 0x0002
-	FlagInExtend    RecordFlag = 0x0004
-	FlagIsIndex     RecordFlag = 0x0008
+	RecordFlagInUse       RecordFlag = 0x0001
+	RecordFlagIsDirectory RecordFlag = 0x0002
+	RecordFlagInExtend    RecordFlag = 0x0004
+	RecordFlagIsIndex     RecordFlag = 0x0008
 )
+
+func (f *RecordFlag) IsInUse() bool {
+	return *f&RecordFlagInUse == RecordFlagInUse
+}
+
+func (f *RecordFlag) IsDirectory() bool {
+	return *f&RecordFlagIsDirectory == RecordFlagIsDirectory
+}
+
+func (f *RecordFlag) IsInExtend() bool {
+	return *f&RecordFlagInExtend == RecordFlagInExtend
+}
+
+func (f *RecordFlag) IsIndex() bool {
+	return *f&RecordFlagIsIndex == RecordFlagIsIndex
+}
 
 func ParseRecordHeader(b []byte) (RecordHeader, error) {
 	if len(b) < 42 {
