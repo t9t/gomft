@@ -339,3 +339,41 @@ func padTo(data []byte, length int) []byte {
 	}
 	return result
 }
+
+func (at AttributeType) Name() string {
+	switch at {
+	case AttributeTypeStandardInformation:
+		return "$STANDARD_INFORMATION"
+	case AttributeTypeAttributeList:
+		return "$ATTRIBUTE_LIST"
+	case AttributeTypeFileName:
+		return "$FILE_NAME"
+	case AttributeTypeObjectId:
+		return "$OBJECT_ID"
+	case AttributeTypeSecurityDescriptor:
+		return "$SECURITY_DESCRIPTOR"
+	case AttributeTypeVolumeName:
+		return "$VOLUME_NAME"
+	case AttributeTypeVolumeInformation:
+		return "$VOLUME_INFORMATION"
+	case AttributeTypeData:
+		return "$DATA"
+	case AttributeTypeIndexRoot:
+		return "$INDEX_ROOT"
+	case AttributeTypeIndexAllocation:
+		return "$INDEX_ALLOCATION"
+	case AttributeTypeBitmap:
+		return "$BITMAP"
+	case AttributeTypeReparsePoint:
+		return "$REPARSE_POINT"
+	case AttributeTypeEAInformation:
+		return "$EA_INFORMATION"
+	case AttributeTypeEA:
+		return "$EA"
+	case AttributeTypePropertySet:
+		return "$PROPERTY_SET"
+	case AttributeTypeLoggedUtilityStream:
+		return "$LOGGED_UTILITY_STREAM"
+	}
+	return "unknown"
+}
