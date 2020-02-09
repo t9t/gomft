@@ -173,7 +173,17 @@ type Attribute struct {
 }
 
 type AttributeType uint32
-type AttributeFlags []byte
+type AttributeFlags uint16
+
+const (
+	AttributeFlagsCompressed AttributeFlags = 0x0001
+	AttributeFlagsEncrypted  AttributeFlags = 0x4000
+	AttributeFlagsSparse     AttributeFlags = 0x8000
+)
+
+func (f *AttributeFlags) Is(c AttributeFlags) bool {
+	return *f&c == c
+}
 
 func ParseAttributes(b []byte) ([]Attribute, error) {
 	if len(b) == 0 {
@@ -259,7 +269,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		Type:        AttributeType(r.Uint32(0)),
 		Resident:    resident,
 		Name:        name,
-		Flags:       AttributeFlags(binutil.Duplicate(r.Read(0x0C, 2))),
+		Flags:       AttributeFlags(r.Uint16(0x0C)),
 		AttributeId: int(r.Uint16(0x0E)),
 		Data:        binutil.Duplicate(attributeData),
 	}, nil
