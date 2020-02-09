@@ -27,6 +27,10 @@ const (
 	FileAttributeEncrypted         FileAttribute = 0x4000
 )
 
+func (a *FileAttribute) Is(c FileAttribute) bool {
+	return *a&c == c
+}
+
 var (
 	reallyStrangeEpoch = time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
 )

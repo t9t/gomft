@@ -9,6 +9,17 @@ import (
 	"github.com/t9t/gomft/mft"
 )
 
+func TestFileAttribute(t *testing.T) {
+	a := mft.FileAttribute(0x83)
+
+	// just a sample
+	assert.True(t, a.Is(mft.FileAttributeReadOnly))
+	assert.True(t, a.Is(mft.FileAttributeHidden))
+	assert.True(t, a.Is(mft.FileAttributeNormal))
+	assert.False(t, a.Is(mft.FileAttributeDevice))
+	assert.False(t, a.Is(mft.FileAttributeCompressed))
+}
+
 func TestParseStandardInformation(t *testing.T) {
 	input := decodeHex(t, "8d07703c89d7d5018d07703c89d6d5018d07703c89d6d5018d07703c89d6d501200000000000A30005000000010000000070000001100000000010000000000028820f4b05000000")
 	out, err := mft.ParseStandardInformation(input)

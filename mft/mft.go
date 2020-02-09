@@ -103,20 +103,8 @@ const (
 	RecordFlagIsIndex     RecordFlag = 0x0008
 )
 
-func (f *RecordFlag) IsInUse() bool {
-	return *f&RecordFlagInUse == RecordFlagInUse
-}
-
-func (f *RecordFlag) IsDirectory() bool {
-	return *f&RecordFlagIsDirectory == RecordFlagIsDirectory
-}
-
-func (f *RecordFlag) IsInExtend() bool {
-	return *f&RecordFlagInExtend == RecordFlagInExtend
-}
-
-func (f *RecordFlag) IsIndex() bool {
-	return *f&RecordFlagIsIndex == RecordFlagIsIndex
+func (f *RecordFlag) Is(c RecordFlag) bool {
+	return *f&c == c
 }
 
 func ParseRecordHeader(b []byte) (RecordHeader, error) {
