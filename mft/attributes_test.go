@@ -35,7 +35,7 @@ func TestParseFileName(t *testing.T) {
 	out, err := mft.ParseFileName(input)
 	require.Nilf(t, err, "could not parse attribute: %v", err)
 	expected := mft.FileName{
-		ParentFileReference: 1125899907459298,
+		ParentFileReference: mft.FileReference{RecordNumber: 616674, SequenceNumber: 4},
 		Creation:            time.Date(2019, time.December, 14, 9, 42, 29, 175000000, time.UTC),
 		FileLastModified:    time.Date(2014, time.August, 26, 21, 47, 02, 0, time.UTC),
 		MftLastModified:     time.Date(2019, time.December, 14, 9, 42, 29, 176000000, time.UTC),
@@ -55,14 +55,13 @@ func TestParseAttributeList(t *testing.T) {
 	out, err := mft.ParseAttributeList(input)
 	require.Nilf(t, err, "could not parse attribute: %v", err)
 
-	zeroes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 	expected := []mft.AttributeListEntry{
-		mft.AttributeListEntry{Type: mft.AttributeTypeStandardInformation, BaseRecordReference: zeroes},
-		mft.AttributeListEntry{Type: mft.AttributeTypeFileName, BaseRecordReference: zeroes, AttributeId: 5},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, BaseRecordReference: zeroes},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x1ecba, BaseRecordReference: []byte{0xba, 0xec, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x318b7, BaseRecordReference: []byte{0xb7, 0x18, 0x3, 0x0, 0x0, 0x0, 0x0, 0x0}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x43e10, BaseRecordReference: []byte{0x10, 0x3e, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeStandardInformation, BaseRecordReference: mft.FileReference{}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeFileName, BaseRecordReference: mft.FileReference{}, AttributeId: 5},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, BaseRecordReference: mft.FileReference{}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x1ecba, BaseRecordReference: mft.FileReference{RecordNumber: 126138, SequenceNumber: 0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x318b7, BaseRecordReference: mft.FileReference{RecordNumber: 202935, SequenceNumber: 0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x43e10, BaseRecordReference: mft.FileReference{RecordNumber: 278032, SequenceNumber: 0}},
 	}
 	assert.Equal(t, expected, out)
 }
@@ -80,10 +79,10 @@ func TestParseIndexRoot(t *testing.T) {
 		Flags:             0,
 		Entries: []mft.IndexEntry{
 			mft.IndexEntry{
-				FileReference: mft.FileReference{0x5f, 0xac, 0x6, 0x0, 0x0, 0x0, 0x6, 0x0},
+				FileReference: mft.FileReference{RecordNumber: 437343, SequenceNumber: 6},
 				Flags:         0,
 				FileName: mft.FileName{
-					ParentFileReference: 0x3b000000068c39,
+					ParentFileReference: mft.FileReference{RecordNumber: 429113, SequenceNumber: 59},
 					Creation:            time.Date(2020, time.February, 5, 14, 59, 38, 116886200, time.UTC),
 					FileLastModified:    time.Date(2020, time.February, 5, 14, 59, 38, 116886200, time.UTC),
 					MftLastModified:     time.Date(2020, time.February, 5, 14, 59, 39, 595445600, time.UTC),
@@ -97,7 +96,7 @@ func TestParseIndexRoot(t *testing.T) {
 				},
 				SubNodeVCN: 0x0,
 			},
-			mft.IndexEntry{FileReference: mft.FileReference{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, Flags: 2, FileName: mft.FileName{}, SubNodeVCN: 0x0},
+			mft.IndexEntry{FileReference: mft.FileReference{}, Flags: 2, FileName: mft.FileName{}, SubNodeVCN: 0x0},
 		},
 	}
 	assert.Equal(t, expected, out)

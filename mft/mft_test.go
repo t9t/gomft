@@ -20,13 +20,13 @@ func TestParseRecordHeader(t *testing.T) {
 		UpdateSequenceOffset:  48,
 		UpdateSequenceSize:    3,
 		LogFileSequenceNumber: 25695988020,
-		RecordUsageNumber:     145,
+		SequenceNumber:        145,
 		HardLinkCount:         1,
 		FirstAttributeOffset:  56,
 		Flags:                 mft.RecordFlag(mft.FlagInUse),
 		ActualSize:            480,
 		AllocatedSize:         1024,
-		BaseRecordReference:   []byte{0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0, 0x10, 0x90},
+		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
 		NextAttributeId:       8,
 		RecordNumber:          0,
 	}
@@ -111,6 +111,13 @@ func TestParseRecordFixup(t *testing.T) {
 	require.Nilf(t, err, "error parsing attribute: %v", err)
 
 	// without fixup, this record returns an error parsing attributes; no further assertions necessary
+}
+
+func TestParseFileReference(t *testing.T) {
+	ref, err := mft.ParseFileReference([]byte{26, 179, 6, 0, 0, 0, 45, 0})
+	require.Nilf(t, err, "error parsing reference: %v", err)
+	expected := mft.FileReference{RecordNumber: 439066, SequenceNumber: 45}
+	assert.Equal(t, expected, ref)
 }
 
 func readTestMft(t *testing.T) []byte {

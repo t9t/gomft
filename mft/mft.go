@@ -67,7 +67,7 @@ type RecordHeader struct {
 	UpdateSequenceOffset  int
 	UpdateSequenceSize    int
 	LogFileSequenceNumber uint64
-	RecordUsageNumber     int
+	SequenceNumber        int
 	HardLinkCount         int
 	FirstAttributeOffset  int
 	Flags                 RecordFlag
@@ -78,7 +78,22 @@ type RecordHeader struct {
 	RecordNumber          uint32
 }
 
-type FileReference []byte
+type FileReference struct {
+	RecordNumber   uint64
+	SequenceNumber uint16
+}
+
+func ParseFileReference(b []byte) (FileReference, error) {
+	if len(b) != 8 {
+		return FileReference{}, fmt.Errorf("expected 8 bytes but got %d", len(b))
+	}
+
+	return FileReference{
+		RecordNumber:   binary.LittleEndian.Uint64(padTo(b[:6], 8)),
+		SequenceNumber: binary.LittleEndian.Uint16(b[6:]),
+	}, nil
+}
+
 type RecordFlag uint16
 
 const (
@@ -97,18 +112,22 @@ func ParseRecordHeader(b []byte) (RecordHeader, error) {
 		return RecordHeader{}, fmt.Errorf("unknown record signature: %# x", sig)
 	}
 	r := binutil.NewLittleEndianReader(b)
+	baseRecordRef, err := ParseFileReference(r.Read(0x20, 8))
+	if err != nil {
+		return RecordHeader{}, fmt.Errorf("unable to parse base record reference: %v", err)
+	}
 	return RecordHeader{
 		Signature:             binutil.Duplicate(sig),
 		UpdateSequenceOffset:  int(r.Uint16(0x04)),
 		UpdateSequenceSize:    int(r.Uint16(0x06)),
 		LogFileSequenceNumber: r.Uint64(0x08),
-		RecordUsageNumber:     int(r.Uint16(0x10)),
+		SequenceNumber:        int(r.Uint16(0x10)),
 		HardLinkCount:         int(r.Uint16(0x12)),
 		FirstAttributeOffset:  int(r.Uint16(0x14)),
 		Flags:                 RecordFlag(r.Uint16(0x16)),
 		ActualSize:            r.Uint32(0x18),
 		AllocatedSize:         r.Uint32(0x1C),
-		BaseRecordReference:   binutil.Duplicate(r.Read(0x20, 8)),
+		BaseRecordReference:   baseRecordRef,
 		NextAttributeId:       int(r.Uint16(0x28)),
 		RecordNumber:          r.Uint32(0x2C),
 	}, nil

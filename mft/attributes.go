@@ -86,7 +86,7 @@ func ParseStandardInformation(b []byte) (StandardInformation, error) {
 
 type FileNameNamespace byte
 type FileName struct {
-	ParentFileReference uint64
+	ParentFileReference FileReference
 	Creation            time.Time
 	FileLastModified    time.Time
 	MftLastModified     time.Time
@@ -115,8 +115,12 @@ func ParseFileName(b []byte) (FileName, error) {
 	if err != nil {
 		return FileName{}, fmt.Errorf("unable to decode file name: %w", err)
 	}
+	parentRef, err := ParseFileReference(r.Read(0x00, 8))
+	if err != nil {
+		return FileName{}, fmt.Errorf("unable to parse file reference: %v", err)
+	}
 	return FileName{
-		ParentFileReference: r.Uint64(0x00),
+		ParentFileReference: parentRef,
 		Creation:            ConvertFileTime(r.Uint64(0x08)),
 		FileLastModified:    ConvertFileTime(r.Uint64(0x10)),
 		MftLastModified:     ConvertFileTime(r.Uint64(0x18)),
@@ -161,11 +165,15 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 			}
 			name = parsed
 		}
+		baseRef, err := ParseFileReference(r.Read(0x08, 8))
+		if err != nil {
+			return entries, fmt.Errorf("unable to parse base record reference: %v", err)
+		}
 		entry := AttributeListEntry{
 			Type:                AttributeType(r.Uint32(0)),
 			Name:                name,
 			StartingVCN:         r.Uint64(0x08),
-			BaseRecordReference: FileReference(binutil.Duplicate(r.Read(0x08, 8))),
+			BaseRecordReference: baseRef,
 			AttributeId:         r.Uint16(0x18),
 		}
 		entries = append(entries, entry)
@@ -249,7 +257,6 @@ func parseIndexEntries(b []byte) ([]IndexEntry, error) {
 			return entries, fmt.Errorf("index entry length indicates %d bytes but got %d", entryLength, len(b))
 		}
 
-
 		flags := r.Uint32(0x0C)
 		pointsToSubNode := flags&0b1 != 0
 		isLastEntryInNode := flags&0b10 != 0
@@ -268,8 +275,12 @@ func parseIndexEntries(b []byte) ([]IndexEntry, error) {
 			subNodeVcn = r.Uint64(entryLength - 8)
 		}
 
+		fileReference, err := ParseFileReference(r.Read(0x00, 8))
+		if err != nil {
+			return entries, fmt.Errorf("unable to file reference: %v", err)
+		}
 		entry := IndexEntry{
-			FileReference: FileReference(r.Read(0x00, 8)),
+			FileReference: fileReference,
 			Flags:         flags,
 			FileName:      fileName,
 			SubNodeVCN:    subNodeVcn,
