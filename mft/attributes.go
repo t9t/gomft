@@ -104,7 +104,7 @@ type FileName struct {
 	MftLastModified     time.Time
 	LastAccess          time.Time
 	AllocatedSize       uint64
-	RealSize            uint64
+	ActualSize          uint64
 	Flags               FileAttribute
 	ExtendedData        uint32
 	Namespace           FileNameNamespace
@@ -138,7 +138,7 @@ func ParseFileName(b []byte) (FileName, error) {
 		MftLastModified:     ConvertFileTime(r.Uint64(0x18)),
 		LastAccess:          ConvertFileTime(r.Uint64(0x20)),
 		AllocatedSize:       r.Uint64(0x28),
-		RealSize:            r.Uint64(0x30),
+		ActualSize:          r.Uint64(0x30),
 		Flags:               FileAttribute(r.Uint32(0x38)),
 		ExtendedData:        r.Uint32(0x3c),
 		Namespace:           FileNameNamespace(r.Byte(0x41)),
