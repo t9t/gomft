@@ -72,7 +72,7 @@ func ParseRecord(b []byte) (Record, error) {
 	updateSequenceSize := int(r.Uint16(0x06))
 	b, err = applyFixUp(b, updateSequenceOffset, updateSequenceSize)
 	if err != nil {
-		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
+		return Record{}, fmt.Errorf("unable to apply fixup: %v", err)
 	}
 
 	attributes, err := ParseAttributes(b[firstAttributeOffset:])
@@ -237,7 +237,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		nameBytes := r.Read(int(nameOffset), int(nameLength)*2)
 		decoded, err := utf16.DecodeString(nameBytes, binary.LittleEndian)
 		if err != nil {
-			return Attribute{}, fmt.Errorf("unable to parse attribute name: %w", err)
+			return Attribute{}, fmt.Errorf("unable to parse attribute name: %v", err)
 		}
 		name = decoded
 	}

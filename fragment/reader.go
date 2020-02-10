@@ -39,7 +39,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		r.remaining = next.Length
 		seeked, err := r.src.Seek(next.Offset, 0)
 		if err != nil {
-			return 0, fmt.Errorf("unable to seek to next offset %d: %w", next.Offset, err)
+			return 0, fmt.Errorf("unable to seek to next offset %d: %v", next.Offset, err)
 		}
 		if seeked != next.Offset {
 			return 0, fmt.Errorf("wanted to seek to %d but reached %d", next.Offset, seeked)

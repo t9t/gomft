@@ -125,7 +125,7 @@ func ParseFileName(b []byte) (FileName, error) {
 	r := binutil.NewLittleEndianReader(b)
 	name, err := utf16.DecodeString(r.Read(0x42, fileNameLength), binary.LittleEndian)
 	if err != nil {
-		return FileName{}, fmt.Errorf("unable to decode file name: %w", err)
+		return FileName{}, fmt.Errorf("unable to decode file name: %v", err)
 	}
 	parentRef, err := ParseFileReference(r.Read(0x00, 8))
 	if err != nil {
@@ -173,7 +173,7 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 			nameOffset := int(r.Byte(0x07))
 			parsed, err := utf16.DecodeString(r.Read(nameOffset, nameLength*2), binary.LittleEndian)
 			if err != nil {
-				return entries, fmt.Errorf("unable to parsed attribute name: %w", err)
+				return entries, fmt.Errorf("unable to parsed attribute name: %v", err)
 			}
 			name = parsed
 		}
@@ -234,7 +234,7 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 	if totalSize >= 16 {
 		parsed, err := parseIndexEntries(r.Read(0x20, totalSize-16))
 		if err != nil {
-			return IndexRoot{}, fmt.Errorf("error parsing index entries: %w", err)
+			return IndexRoot{}, fmt.Errorf("error parsing index entries: %v", err)
 		}
 		entries = parsed
 	}
@@ -278,7 +278,7 @@ func parseIndexEntries(b []byte) ([]IndexEntry, error) {
 		if contentLength != 0 && !isLastEntryInNode {
 			parsedFileName, err := ParseFileName(r.Read(0x10, contentLength))
 			if err != nil {
-				return entries, fmt.Errorf("error parsing $FILE_NAME record in index entry: %w", err)
+				return entries, fmt.Errorf("error parsing $FILE_NAME record in index entry: %v", err)
 			}
 			fileName = parsedFileName
 		}
