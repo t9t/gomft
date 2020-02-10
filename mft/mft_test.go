@@ -11,11 +11,11 @@ import (
 	"github.com/t9t/gomft/mft"
 )
 
-func TestParseRecordHeader(t *testing.T) {
+func TestParseRecord(t *testing.T) {
 	b := readTestMft(t)
-	header, err := mft.ParseRecordHeader(b[:42])
-	require.Nilf(t, err, "could not parse record header: %v", err)
-	expected := mft.RecordHeader{
+	record, err := mft.ParseRecord(b)
+	require.Nilf(t, err, "could not parse record: %v", err)
+	expected := mft.Record{Header: mft.RecordHeader{
 		Signature:             []byte{'F', 'I', 'L', 'E'},
 		UpdateSequenceOffset:  48,
 		UpdateSequenceSize:    3,
@@ -29,9 +29,12 @@ func TestParseRecordHeader(t *testing.T) {
 		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
 		NextAttributeId:       8,
 		RecordNumber:          0,
-	}
+	}, Attributes: []mft.Attribute{}}
 
-	assert.Equal(t, expected, header)
+	// Clear attributes, not interested in them for this test
+	record.Attributes = []mft.Attribute{}
+
+	assert.Equal(t, expected, record)
 }
 
 func TestParseAttributes(t *testing.T) {
