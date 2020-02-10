@@ -40,11 +40,36 @@ type Record struct {
 }
 
 func ParseRecord(b []byte) (Record, error) {
-	b = binutil.Duplicate(b)
-	header, err := ParseRecordHeader(b)
-	if err != nil {
-		return Record{}, err
+	if len(b) < 42 {
+		return Record{}, fmt.Errorf("record data length should be at least 42 but is %d", len(b))
 	}
+	sig := b[:4]
+	if bytes.Compare(sig, fileSignature) != 0 {
+		return Record{}, fmt.Errorf("unknown record signature: %# x", sig)
+	}
+
+	b = binutil.Duplicate(b)
+	r := binutil.NewLittleEndianReader(b)
+	baseRecordRef, err := ParseFileReference(r.Read(0x20, 8))
+	if err != nil {
+		return Record{}, fmt.Errorf("unable to parse base record reference: %v", err)
+	}
+	header := RecordHeader{
+		Signature:             binutil.Duplicate(sig),
+		UpdateSequenceOffset:  int(r.Uint16(0x04)),
+		UpdateSequenceSize:    int(r.Uint16(0x06)),
+		LogFileSequenceNumber: r.Uint64(0x08),
+		SequenceNumber:        int(r.Uint16(0x10)),
+		HardLinkCount:         int(r.Uint16(0x12)),
+		FirstAttributeOffset:  int(r.Uint16(0x14)),
+		Flags:                 RecordFlag(r.Uint16(0x16)),
+		ActualSize:            r.Uint32(0x18),
+		AllocatedSize:         r.Uint32(0x1C),
+		BaseRecordReference:   baseRecordRef,
+		NextAttributeId:       int(r.Uint16(0x28)),
+		RecordNumber:          r.Uint32(0x2C),
+	}
+	////////
 	f := header.FirstAttributeOffset
 	if f < 0 || f >= len(b) {
 		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
@@ -105,36 +130,6 @@ const (
 
 func (f *RecordFlag) Is(c RecordFlag) bool {
 	return *f&c == c
-}
-
-func ParseRecordHeader(b []byte) (RecordHeader, error) {
-	if len(b) < 42 {
-		return RecordHeader{}, fmt.Errorf("record header data length should be at least 42 but is %d", len(b))
-	}
-	sig := b[:4]
-	if bytes.Compare(sig, fileSignature) != 0 {
-		return RecordHeader{}, fmt.Errorf("unknown record signature: %# x", sig)
-	}
-	r := binutil.NewLittleEndianReader(b)
-	baseRecordRef, err := ParseFileReference(r.Read(0x20, 8))
-	if err != nil {
-		return RecordHeader{}, fmt.Errorf("unable to parse base record reference: %v", err)
-	}
-	return RecordHeader{
-		Signature:             binutil.Duplicate(sig),
-		UpdateSequenceOffset:  int(r.Uint16(0x04)),
-		UpdateSequenceSize:    int(r.Uint16(0x06)),
-		LogFileSequenceNumber: r.Uint64(0x08),
-		SequenceNumber:        int(r.Uint16(0x10)),
-		HardLinkCount:         int(r.Uint16(0x12)),
-		FirstAttributeOffset:  int(r.Uint16(0x14)),
-		Flags:                 RecordFlag(r.Uint16(0x16)),
-		ActualSize:            r.Uint32(0x18),
-		AllocatedSize:         r.Uint32(0x1C),
-		BaseRecordReference:   baseRecordRef,
-		NextAttributeId:       int(r.Uint16(0x28)),
-		RecordNumber:          r.Uint32(0x2C),
-	}, nil
 }
 
 func applyFixUp(b []byte, offset int, length int) ([]byte, error) {
