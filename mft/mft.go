@@ -35,7 +35,19 @@ var (
 )
 
 type Record struct {
-	Header     RecordHeader
+	Signature             []byte
+	UpdateSequenceOffset  int
+	UpdateSequenceSize    int
+	LogFileSequenceNumber uint64
+	SequenceNumber        int
+	HardLinkCount         int
+	FirstAttributeOffset  int
+	Flags                 RecordFlag
+	ActualSize            uint32
+	AllocatedSize         uint32
+	BaseRecordReference   FileReference
+	NextAttributeId       int
+	RecordNumber          uint32
 	Attributes []Attribute
 }
 
@@ -54,7 +66,25 @@ func ParseRecord(b []byte) (Record, error) {
 	if err != nil {
 		return Record{}, fmt.Errorf("unable to parse base record reference: %v", err)
 	}
-	header := RecordHeader{
+
+	firstAttributeOffset :=  int(r.Uint16(0x14))
+	f := firstAttributeOffset
+	if f < 0 || f >= len(b) {
+		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
+	}
+
+	updateSequenceOffset:=  int(r.Uint16(0x04))
+	updateSequenceSize:=   int(r.Uint16(0x06))
+	b, err = applyFixUp(b, updateSequenceOffset, updateSequenceSize)
+	if err != nil {
+		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
+	}
+
+	attributes, err := ParseAttributes(b[f:])
+	if err != nil {
+		return Record{}, err
+	}
+	return Record{
 		Signature:             binutil.Duplicate(sig),
 		UpdateSequenceOffset:  int(r.Uint16(0x04)),
 		UpdateSequenceSize:    int(r.Uint16(0x06)),
@@ -68,39 +98,8 @@ func ParseRecord(b []byte) (Record, error) {
 		BaseRecordReference:   baseRecordRef,
 		NextAttributeId:       int(r.Uint16(0x28)),
 		RecordNumber:          r.Uint32(0x2C),
-	}
-	////////
-	f := header.FirstAttributeOffset
-	if f < 0 || f >= len(b) {
-		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
-	}
-
-	b, err = applyFixUp(b, header.UpdateSequenceOffset, header.UpdateSequenceSize)
-	if err != nil {
-		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
-	}
-
-	attributes, err := ParseAttributes(b[f:])
-	if err != nil {
-		return Record{}, err
-	}
-	return Record{Header: header, Attributes: attributes}, nil
-}
-
-type RecordHeader struct {
-	Signature             []byte
-	UpdateSequenceOffset  int
-	UpdateSequenceSize    int
-	LogFileSequenceNumber uint64
-	SequenceNumber        int
-	HardLinkCount         int
-	FirstAttributeOffset  int
-	Flags                 RecordFlag
-	ActualSize            uint32
-	AllocatedSize         uint32
-	BaseRecordReference   FileReference
-	NextAttributeId       int
-	RecordNumber          uint32
+		Attributes: attributes,
+		}, nil
 }
 
 type FileReference struct {

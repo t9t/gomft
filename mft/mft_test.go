@@ -15,7 +15,7 @@ func TestParseRecord(t *testing.T) {
 	b := readTestMft(t)
 	record, err := mft.ParseRecord(b)
 	require.Nilf(t, err, "could not parse record: %v", err)
-	expected := mft.Record{Header: mft.RecordHeader{
+	expected := mft.Record{
 		Signature:             []byte{'F', 'I', 'L', 'E'},
 		UpdateSequenceOffset:  48,
 		UpdateSequenceSize:    3,
@@ -29,7 +29,8 @@ func TestParseRecord(t *testing.T) {
 		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
 		NextAttributeId:       8,
 		RecordNumber:          0,
-	}, Attributes: []mft.Attribute{}}
+		Attributes:            []mft.Attribute{},
+	}
 
 	// Clear attributes, not interested in them for this test
 	record.Attributes = []mft.Attribute{}
