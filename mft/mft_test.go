@@ -17,15 +17,14 @@ func TestParseRecord(t *testing.T) {
 	require.Nilf(t, err, "could not parse record: %v", err)
 	expected := mft.Record{
 		Signature:             []byte{'F', 'I', 'L', 'E'},
+		FileReference:         mft.FileReference{RecordNumber: 0, SequenceNumber: 145},
+		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
 		LogFileSequenceNumber: 25695988020,
-		SequenceNumber:        145,
 		HardLinkCount:         1,
 		Flags:                 mft.RecordFlag(mft.RecordFlagInUse),
 		ActualSize:            480,
 		AllocatedSize:         1024,
-		BaseRecordReference:   mft.FileReference{RecordNumber: 18446727447098470560, SequenceNumber: 36880},
 		NextAttributeId:       8,
-		RecordNumber:          0,
 		Attributes:            []mft.Attribute{},
 	}
 

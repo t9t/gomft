@@ -36,15 +36,14 @@ var (
 
 type Record struct {
 	Signature             []byte
+	FileReference         FileReference
+	BaseRecordReference   FileReference
 	LogFileSequenceNumber uint64
-	SequenceNumber        int
 	HardLinkCount         int
 	Flags                 RecordFlag
 	ActualSize            uint32
 	AllocatedSize         uint32
-	BaseRecordReference   FileReference
 	NextAttributeId       int
-	RecordNumber          uint32
 	Attributes            []Attribute
 }
 
@@ -65,9 +64,8 @@ func ParseRecord(b []byte) (Record, error) {
 	}
 
 	firstAttributeOffset := int(r.Uint16(0x14))
-	f := firstAttributeOffset
-	if f < 0 || f >= len(b) {
-		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
+	if firstAttributeOffset < 0 || firstAttributeOffset >= len(b) {
+		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", firstAttributeOffset, len(b))
 	}
 
 	updateSequenceOffset := int(r.Uint16(0x04))
@@ -77,21 +75,20 @@ func ParseRecord(b []byte) (Record, error) {
 		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
 	}
 
-	attributes, err := ParseAttributes(b[f:])
+	attributes, err := ParseAttributes(b[firstAttributeOffset:])
 	if err != nil {
 		return Record{}, err
 	}
 	return Record{
 		Signature:             binutil.Duplicate(sig),
+		FileReference:         FileReference{RecordNumber: uint64(r.Uint32(0x2C)), SequenceNumber: r.Uint16(0x10)},
+		BaseRecordReference:   baseRecordRef,
 		LogFileSequenceNumber: r.Uint64(0x08),
-		SequenceNumber:        int(r.Uint16(0x10)),
 		HardLinkCount:         int(r.Uint16(0x12)),
 		Flags:                 RecordFlag(r.Uint16(0x16)),
 		ActualSize:            r.Uint32(0x18),
 		AllocatedSize:         r.Uint32(0x1C),
-		BaseRecordReference:   baseRecordRef,
 		NextAttributeId:       int(r.Uint16(0x28)),
-		RecordNumber:          r.Uint32(0x2C),
 		Attributes:            attributes,
 	}, nil
 }
