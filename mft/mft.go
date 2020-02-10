@@ -36,19 +36,16 @@ var (
 
 type Record struct {
 	Signature             []byte
-	UpdateSequenceOffset  int
-	UpdateSequenceSize    int
 	LogFileSequenceNumber uint64
 	SequenceNumber        int
 	HardLinkCount         int
-	FirstAttributeOffset  int
 	Flags                 RecordFlag
 	ActualSize            uint32
 	AllocatedSize         uint32
 	BaseRecordReference   FileReference
 	NextAttributeId       int
 	RecordNumber          uint32
-	Attributes []Attribute
+	Attributes            []Attribute
 }
 
 func ParseRecord(b []byte) (Record, error) {
@@ -67,14 +64,14 @@ func ParseRecord(b []byte) (Record, error) {
 		return Record{}, fmt.Errorf("unable to parse base record reference: %v", err)
 	}
 
-	firstAttributeOffset :=  int(r.Uint16(0x14))
+	firstAttributeOffset := int(r.Uint16(0x14))
 	f := firstAttributeOffset
 	if f < 0 || f >= len(b) {
 		return Record{}, fmt.Errorf("invalid first attribute offset %d (data length: %d)", f, len(b))
 	}
 
-	updateSequenceOffset:=  int(r.Uint16(0x04))
-	updateSequenceSize:=   int(r.Uint16(0x06))
+	updateSequenceOffset := int(r.Uint16(0x04))
+	updateSequenceSize := int(r.Uint16(0x06))
 	b, err = applyFixUp(b, updateSequenceOffset, updateSequenceSize)
 	if err != nil {
 		return Record{}, fmt.Errorf("unable to apply fixup: %w", err)
@@ -86,20 +83,17 @@ func ParseRecord(b []byte) (Record, error) {
 	}
 	return Record{
 		Signature:             binutil.Duplicate(sig),
-		UpdateSequenceOffset:  int(r.Uint16(0x04)),
-		UpdateSequenceSize:    int(r.Uint16(0x06)),
 		LogFileSequenceNumber: r.Uint64(0x08),
 		SequenceNumber:        int(r.Uint16(0x10)),
 		HardLinkCount:         int(r.Uint16(0x12)),
-		FirstAttributeOffset:  int(r.Uint16(0x14)),
 		Flags:                 RecordFlag(r.Uint16(0x16)),
 		ActualSize:            r.Uint32(0x18),
 		AllocatedSize:         r.Uint32(0x1C),
 		BaseRecordReference:   baseRecordRef,
 		NextAttributeId:       int(r.Uint16(0x28)),
 		RecordNumber:          r.Uint32(0x2C),
-		Attributes: attributes,
-		}, nil
+		Attributes:            attributes,
+	}, nil
 }
 
 type FileReference struct {

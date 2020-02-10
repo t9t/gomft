@@ -17,12 +17,9 @@ func TestParseRecord(t *testing.T) {
 	require.Nilf(t, err, "could not parse record: %v", err)
 	expected := mft.Record{
 		Signature:             []byte{'F', 'I', 'L', 'E'},
-		UpdateSequenceOffset:  48,
-		UpdateSequenceSize:    3,
 		LogFileSequenceNumber: 25695988020,
 		SequenceNumber:        145,
 		HardLinkCount:         1,
-		FirstAttributeOffset:  56,
 		Flags:                 mft.RecordFlag(mft.RecordFlagInUse),
 		ActualSize:            480,
 		AllocatedSize:         1024,
