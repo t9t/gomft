@@ -163,13 +163,25 @@ func applyFixUp(b []byte, offset int, length int) ([]byte, error) {
 	return b, nil
 }
 
+func (r *Record) FindAttributes(attrType AttributeType) []Attribute {
+	ret := make([]Attribute, 0)
+	for _, a := range r.Attributes {
+		if a.Type == attrType {
+			ret = append(ret, a)
+		}
+	}
+	return ret
+}
+
 type Attribute struct {
-	Type        AttributeType
-	Resident    bool
-	Name        string
-	Flags       AttributeFlags
-	AttributeId int
-	Data        []byte
+	Type          AttributeType
+	Resident      bool
+	Name          string
+	Flags         AttributeFlags
+	AttributeId   int
+	AllocatedSize uint64
+	ActualSize    uint64
+	Data          []byte
 }
 
 type AttributeType uint32
@@ -247,6 +259,8 @@ func ParseAttribute(b []byte) (Attribute, error) {
 
 	resident := r.Byte(0x08) == 0x00
 	var attributeData []byte
+	actualSize := uint64(0)
+	allocatedSize := uint64(0)
 	if resident {
 		dataOffset := int(r.Uint16(0x14))
 		dataLength := int(r.Uint32(0x10))
@@ -262,16 +276,20 @@ func ParseAttribute(b []byte) (Attribute, error) {
 		if len(b) < dataOffset {
 			return Attribute{}, fmt.Errorf("expected attribute data length to be at least %d but is %d", dataOffset, len(b))
 		}
+		allocatedSize = r.Uint64(0x28)
+		actualSize = r.Uint64(0x30)
 		attributeData = r.ReadFrom(int(dataOffset))
 	}
 
 	return Attribute{
-		Type:        AttributeType(r.Uint32(0)),
-		Resident:    resident,
-		Name:        name,
-		Flags:       AttributeFlags(r.Uint16(0x0C)),
-		AttributeId: int(r.Uint16(0x0E)),
-		Data:        binutil.Duplicate(attributeData),
+		Type:          AttributeType(r.Uint32(0)),
+		Resident:      resident,
+		Name:          name,
+		Flags:         AttributeFlags(r.Uint16(0x0C)),
+		AttributeId:   int(r.Uint16(0x0E)),
+		AllocatedSize: allocatedSize,
+		ActualSize:    actualSize,
+		Data:          binutil.Duplicate(attributeData),
 	}, nil
 }
 
@@ -356,17 +374,19 @@ func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragmen
 }
 
 func padTo(data []byte, length int) []byte {
-	dl := len(data)
-	if dl > length {
+	if len(data) > length {
 		return data
 	}
-	if dl == length {
+	if len(data) == length {
 		return data
 	}
 	result := make([]byte, length)
+	if len(data) == 0 {
+		return result
+	}
 	copy(result, data)
-	if data[dl-1]&0b10000000 == 0b10000000 {
-		for i := dl; i < length; i++ {
+	if data[len(data)-1]&0b10000000 == 0b10000000 {
+		for i := len(data); i < length; i++ {
 			result[i] = 0xFF
 		}
 	}

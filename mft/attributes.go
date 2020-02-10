@@ -89,6 +89,14 @@ func ParseStandardInformation(b []byte) (StandardInformation, error) {
 }
 
 type FileNameNamespace byte
+
+const (
+	FileNameNamespacePosix    FileNameNamespace = 0
+	FileNameNamespaceWin32    FileNameNamespace = 1
+	FileNameNamespaceDos      FileNameNamespace = 2
+	FileNameNamespaceWin32Dos FileNameNamespace = 3
+)
+
 type FileName struct {
 	ParentFileReference FileReference
 	Creation            time.Time
@@ -169,7 +177,7 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 			}
 			name = parsed
 		}
-		baseRef, err := ParseFileReference(r.Read(0x08, 8))
+		baseRef, err := ParseFileReference(r.Read(0x10, 8))
 		if err != nil {
 			return entries, fmt.Errorf("unable to parse base record reference: %v", err)
 		}

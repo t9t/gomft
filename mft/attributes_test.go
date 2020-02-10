@@ -67,12 +67,12 @@ func TestParseAttributeList(t *testing.T) {
 	require.Nilf(t, err, "could not parse attribute: %v", err)
 
 	expected := []mft.AttributeListEntry{
-		mft.AttributeListEntry{Type: mft.AttributeTypeStandardInformation, BaseRecordReference: mft.FileReference{}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeFileName, BaseRecordReference: mft.FileReference{}, AttributeId: 5},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, BaseRecordReference: mft.FileReference{}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x1ecba, BaseRecordReference: mft.FileReference{RecordNumber: 126138, SequenceNumber: 0}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x318b7, BaseRecordReference: mft.FileReference{RecordNumber: 202935, SequenceNumber: 0}},
-		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x43e10, BaseRecordReference: mft.FileReference{RecordNumber: 278032, SequenceNumber: 0}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeStandardInformation, BaseRecordReference: mft.FileReference{RecordNumber: 344379, SequenceNumber: 9}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeFileName, BaseRecordReference: mft.FileReference{RecordNumber: 344379, SequenceNumber: 9}, AttributeId: 5},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, BaseRecordReference: mft.FileReference{RecordNumber: 334158, SequenceNumber: 169}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x1ecba, BaseRecordReference: mft.FileReference{RecordNumber: 344146, SequenceNumber: 73}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x318b7, BaseRecordReference: mft.FileReference{RecordNumber: 344322, SequenceNumber: 15}},
+		mft.AttributeListEntry{Type: mft.AttributeTypeData, StartingVCN: 0x43e10, BaseRecordReference: mft.FileReference{RecordNumber: 344329, SequenceNumber: 29}},
 	}
 	assert.Equal(t, expected, out)
 }
