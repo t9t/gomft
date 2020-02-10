@@ -34,6 +34,8 @@ var (
 	fileSignature = []byte{0x46, 0x49, 0x4c, 0x45}
 )
 
+const maxInt = int64(^uint(0) >> 1)
+
 type Record struct {
 	Signature             []byte
 	FileReference         FileReference
@@ -202,7 +204,11 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 			return nil, fmt.Errorf("cannot read attribute header record length, data should be at least 8 bytes but is %d", len(b))
 		}
 
-		recordLength := int(r.Uint32(0x04))
+		uRecordLength := r.Uint32(0x04)
+		if int64(uRecordLength) > maxInt {
+			return nil, fmt.Errorf("record length %d overflows maximum int value %d", uRecordLength, maxInt)
+		}
+		recordLength := int(uRecordLength)
 		if recordLength <= 0 {
 			return nil, fmt.Errorf("cannot handle attribute with zero or negative record length %d", recordLength)
 		}
@@ -248,7 +254,11 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	allocatedSize := uint64(0)
 	if resident {
 		dataOffset := int(r.Uint16(0x14))
-		dataLength := int(r.Uint32(0x10))
+		uDataLength := r.Uint32(0x10)
+		if int64(uDataLength) > maxInt {
+			return Attribute{}, fmt.Errorf("attribute data length %d overflows maximum int value %d", uDataLength, maxInt)
+		}
+		dataLength := int(uDataLength)
 		expectedDataLength := dataOffset + dataLength
 
 		if len(b) < expectedDataLength {

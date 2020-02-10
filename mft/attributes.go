@@ -225,7 +225,11 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 		return IndexRoot{}, fmt.Errorf("unable to handle attribute type %d (%s) in $INDEX_ROOT", attributeType, attributeType.Name())
 	}
 
-	totalSize := int(r.Uint32(0x14))
+	uTotalSize := r.Uint32(0x14)
+	if int64(uTotalSize) > maxInt {
+		return IndexRoot{}, fmt.Errorf("index root size %d overflows maximum int value %d", uTotalSize, maxInt)
+	}
+	totalSize := int(uTotalSize)
 	expectedSize := totalSize + 16
 	if len(b) < expectedSize {
 		return IndexRoot{}, fmt.Errorf("expected %d bytes in $INDEX_ROOT but is %d", expectedSize, len(b))
