@@ -123,7 +123,7 @@ information strewn about the internet.
 probably best to dump your MFT to a file and experiment with that rather than reading your raw volumes directly.
 
 # mftdump
-The mftdump utility can be used to dump the MFT of a raw volume to a file. Download it in [the releases section](/releases).
+The mftdump utility can be used to dump the MFT of a raw volume to a file. Download it in [the releases section](https://github.com/t9t/gomft/releases).
 
 Usage:
 
