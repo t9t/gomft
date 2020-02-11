@@ -9,32 +9,11 @@ import (
 	"github.com/t9t/gomft/utf16"
 )
 
-type FileAttribute uint32
-
-const (
-	FileAttributeReadOnly          FileAttribute = 0x0001
-	FileAttributeHidden            FileAttribute = 0x0002
-	FileAttributeSystem            FileAttribute = 0x0004
-	FileAttributeArchive           FileAttribute = 0x0020
-	FileAttributeDevice            FileAttribute = 0x0040
-	FileAttributeNormal            FileAttribute = 0x0080
-	FileAttributeTemporary         FileAttribute = 0x0100
-	FileAttributeSparseFile        FileAttribute = 0x0200
-	FileAttributeReparsePoint      FileAttribute = 0x0400
-	FileAttributeCompressed        FileAttribute = 0x1000
-	FileAttributeOffline           FileAttribute = 0x1000
-	FileAttributeNotContentIndexed FileAttribute = 0x2000
-	FileAttributeEncrypted         FileAttribute = 0x4000
-)
-
-func (a *FileAttribute) Is(c FileAttribute) bool {
-	return *a&c == c
-}
-
 var (
 	reallyStrangeEpoch = time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
 
+// StandardInformation represents the data contained in a $STANDARD_INFORMATION attribute.
 type StandardInformation struct {
 	Creation                time.Time
 	FileLastModified        time.Time
@@ -50,6 +29,9 @@ type StandardInformation struct {
 	UpdateSequenceNumber    uint64
 }
 
+// ParseStandardInformation parses the data of a $STANDARD_INFORMATION attribute's data (type
+// AttributeTypeStandardInformation) into StandardInformation. Note that no additional correctness checks are done, so
+// it's up to the caller to ensure the passed data actually represents a $STANDARD_INFORMATION attribute's data.
 func ParseStandardInformation(b []byte) (StandardInformation, error) {
 	if len(b) < 48 {
 		return StandardInformation{}, fmt.Errorf("expected at least %d bytes but got %d", 48, len(b))
@@ -88,6 +70,32 @@ func ParseStandardInformation(b []byte) (StandardInformation, error) {
 	}, nil
 }
 
+// FileAttribute represents a bit mask of various file attributes.
+type FileAttribute uint32
+
+// Bit values for FileAttribute. For example, a normal, hidden file has value 0x0082.
+const (
+	FileAttributeReadOnly          FileAttribute = 0x0001
+	FileAttributeHidden            FileAttribute = 0x0002
+	FileAttributeSystem            FileAttribute = 0x0004
+	FileAttributeArchive           FileAttribute = 0x0020
+	FileAttributeDevice            FileAttribute = 0x0040
+	FileAttributeNormal            FileAttribute = 0x0080
+	FileAttributeTemporary         FileAttribute = 0x0100
+	FileAttributeSparseFile        FileAttribute = 0x0200
+	FileAttributeReparsePoint      FileAttribute = 0x0400
+	FileAttributeCompressed        FileAttribute = 0x1000
+	FileAttributeOffline           FileAttribute = 0x1000
+	FileAttributeNotContentIndexed FileAttribute = 0x2000
+	FileAttributeEncrypted         FileAttribute = 0x4000
+)
+
+// Is checks if this FileAttribute's bit mask contains the specified attribute value.
+func (a *FileAttribute) Is(c FileAttribute) bool {
+	return *a&c == c
+}
+
+// FileNameNamespace indicates the namespace of a $FILE_NAME attribute's file name.
 type FileNameNamespace byte
 
 const (
@@ -97,6 +105,10 @@ const (
 	FileNameNamespaceWin32Dos FileNameNamespace = 3
 )
 
+// FileName represents the data of a $FILE_NAME attribute. ParentFileReference points to the MFT record that is the
+// parent (ie. containing directory of this file). The AllocatedSize and ActualSize may be zero, in which case the file
+// size may be found in a $DATA attribute instead (it could also be the ActualSize is zero, while the AllocatedSize does
+// contain a value).
 type FileName struct {
 	ParentFileReference FileReference
 	Creation            time.Time
@@ -111,6 +123,9 @@ type FileName struct {
 	Name                string
 }
 
+// ParseFileName parses the data of a $FILE_NAME attribute's data (type AttributeTypeFileName) into FileName. Note that
+// no additional correctness checks are done, so it's up to the caller to ensure the passed data actually represents a
+// $FILE_NAME attribute's data.
 func ParseFileName(b []byte) (FileName, error) {
 	if len(b) < 66 {
 		return FileName{}, fmt.Errorf("expected at least %d bytes but got %d", 66, len(b))
@@ -146,6 +161,9 @@ func ParseFileName(b []byte) (FileName, error) {
 	}, nil
 }
 
+// AttributeListEntry represents an entry in an $ATTRIBUTE_LIST attribute. The Type indicates the attribute type, while
+// the BaseRecordReference indicates which MFT record the attribute is located in (ie. an "extension record", if it is
+// not the same as the one where the $ATTRIBUTE_LIST is located).
 type AttributeListEntry struct {
 	Type                AttributeType
 	Name                string
@@ -154,6 +172,9 @@ type AttributeListEntry struct {
 	AttributeId         uint16
 }
 
+// ParseAttributeList parses the data of a $ATTRIBUTE_LIST attribute's data (type AttributeTypeAttributeList) into a
+// list of AttributeListEntry. Note that no additional correctness checks are done, so it's up to the caller to ensure
+// the passed data actually represents a $ATTRIBUTE_LIST attribute's data.
 func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 	if len(b) < 26 {
 		return []AttributeListEntry{}, fmt.Errorf("expected at least %d bytes but got %d", 26, len(b))
@@ -194,6 +215,7 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 	return entries, nil
 }
 
+// CollationType indicates how the entries in an index should be ordered.
 type CollationType uint32
 
 const (
@@ -206,6 +228,10 @@ const (
 	CollationTypeNtofsUlongs       CollationType = 0x00000013
 )
 
+// IndexRoot represents the data (header and entries) of an $INDEX_ROOT attribute, which typically is the root of a
+// directory's B+tree index containing file names of the directory (but could be use for other types of indices, too).
+// The AttributeType is the type of attributes that are contained in the entries (currently only $FILE_NAME attributes
+// are supported).
 type IndexRoot struct {
 	AttributeType     AttributeType
 	CollationType     CollationType
@@ -215,6 +241,18 @@ type IndexRoot struct {
 	Entries           []IndexEntry
 }
 
+// IndexEntry represents an entry in an B+tree index. Currently only $FILE_NAME attribute entries are supported. The
+// FileReference points to the MFT record of the indexed file.
+type IndexEntry struct {
+	FileReference FileReference
+	Flags         uint32
+	FileName      FileName
+	SubNodeVCN    uint64
+}
+
+// ParseIndexRoot parses the data of a $INDEX_ROOT attribute's data (type AttributeTypeIndexRoot) into
+// IndexRoot. Note that no additional correctness checks are done, so it's up to the caller to ensure the passed data
+// actually represents a $INDEX_ROOT attribute's data.
 func ParseIndexRoot(b []byte) (IndexRoot, error) {
 	if len(b) < 32 {
 		return IndexRoot{}, fmt.Errorf("expected at least %d bytes but got %d", 32, len(b))
@@ -251,13 +289,6 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 		Flags:             r.Uint32(0x1C),
 		Entries:           entries,
 	}, nil
-}
-
-type IndexEntry struct {
-	FileReference FileReference
-	Flags         uint32
-	FileName      FileName
-	SubNodeVCN    uint64
 }
 
 func parseIndexEntries(b []byte) ([]IndexEntry, error) {
@@ -307,6 +338,9 @@ func parseIndexEntries(b []byte) ([]IndexEntry, error) {
 	return entries, nil
 }
 
+// ConvertFileTime converts a Windows "file time" to a time.Time. A "file time" is a 64-bit value that represents the
+// number of 100-nanosecond intervals that have elapsed since 12:00 A.M. January 1, 1601 Coordinated Universal Time
+// (UTC). See also: https://docs.microsoft.com/en-us/windows/win32/sysinfo/file-times
 func ConvertFileTime(timeValue uint64) time.Time {
 	dur := time.Duration(int64(timeValue))
 	r := time.Date(1601, time.January, 1, 0, 0, 0, 0, time.UTC)
