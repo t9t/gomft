@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/t9t/gomft/bootsect"
 	"github.com/t9t/gomft/fragment"
@@ -19,22 +20,30 @@ const (
 )
 
 func main() {
+	isWin := runtime.GOOS == "windows"
 	if len(os.Args) != 3 {
-		fmt.Println("Will dump the MFT of a drive to a file. The drive should be NTFS formatted.")
+		fmt.Println("Will dump the MFT of a volume to a file. The volume should be NTFS formatted.")
 		fmt.Println("\nUsage:")
-		fmt.Printf("\t%s <drive> <output file>", os.Args[0])
+		fmt.Printf("\t%s <volume> <output file>", os.Args[0])
 		fmt.Println("\n\nFor example:")
-		fmt.Printf("\t%s C: D:\\c.mft\n", os.Args[0])
+		if isWin {
+			fmt.Printf("\t%s C: D:\\c.mft\n", os.Args[0])
+		} else {
+			fmt.Printf("\t%s /dev/sdb1 ~/sdb1.mft\n", os.Args[0])
+		}
 		os.Exit(exitCodeUserError)
 		return
 	}
 
-	drive := `\\.\` + os.Args[1]
+	volume := os.Args[1]
+	if isWin {
+		volume = `\\.\` + volume
+	}
 	outfile := os.Args[2]
 
-	in, err := os.Open(drive)
+	in, err := os.Open(volume)
 	if err != nil {
-		fatalf(exitCodeTechnicalError, "Unable to open drive using path %s: %v\n", drive, err)
+		fatalf(exitCodeTechnicalError, "Unable to open volume using path %s: %v\n", volume, err)
 	}
 	defer in.Close()
 
@@ -72,11 +81,16 @@ func main() {
 		fatalf(exitCodeTechnicalError, "Unable to parse $MFT record: %v\n", err)
 	}
 
-	dataAttribute, found := findDataAttribute(record.Attributes)
-	if !found {
+	dataAttributes := record.FindAttributes(mft.AttributeTypeData)
+	if len(dataAttributes) == 0 {
 		fatalf(exitCodeTechnicalError, "No $DATA attribute found in $MFT record\n")
 	}
 
+	if len(dataAttributes) > 1 {
+		fatalf(exitCodeTechnicalError, "More than 1 $DATA attribute found in $MFT record\n")
+	}
+	
+	dataAttribute := dataAttributes[0]
 	if dataAttribute.Resident {
 		fatalf(exitCodeTechnicalError, "Don't know how to handle resident $DATA attribute in $MFT record\n")
 	}
@@ -85,6 +99,7 @@ func main() {
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Unable to parse dataruns in $MFT $DATA record: %v\n", err)
 	}
+
 	if len(dataRuns) == 0 {
 		fatalf(exitCodeTechnicalError, "No dataruns found in $MFT $DATA record\n")
 	}
@@ -118,14 +133,4 @@ func createFileIfNotExist(outfile string) (*os.File, error) {
 func fatalf(exitCode int, format string, v ...interface{}) {
 	fmt.Printf(format, v...)
 	os.Exit(exitCode)
-}
-
-func findDataAttribute(attributes []mft.Attribute) (mft.Attribute, bool) {
-	for _, attr := range attributes {
-		if attr.Type == mft.AttributeTypeData {
-			return attr, true
-		}
-	}
-
-	return mft.Attribute{}, false
 }
