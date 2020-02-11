@@ -1,12 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
-	"runtime"
-	"flag"
 	"path/filepath"
+	"runtime"
 
 	"github.com/t9t/gomft/bootsect"
 	"github.com/t9t/gomft/fragment"
@@ -22,15 +22,22 @@ const (
 )
 
 const isWin = runtime.GOOS == "windows"
-var verbose = false
+
+var (
+	// flags
+	verbose                 = false
+	overwriteOutputIfExists = false
+)
 
 func main() {
 	verboseFlag := flag.Bool("v", false, "verbose; print details about what's going on")
-	
+	forceFlag := flag.Bool("f", false, "force; overwrite the output file if it already exists")
+
 	flag.Usage = printUsage
 	flag.Parse()
 
 	verbose = *verboseFlag
+	overwriteOutputIfExists = *forceFlag
 	args := flag.Args()
 
 	if len(args) != 2 {
@@ -99,7 +106,7 @@ func main() {
 	if len(dataAttributes) > 1 {
 		fatalf(exitCodeTechnicalError, "More than 1 $DATA attribute found in $MFT record\n")
 	}
-	
+
 	dataAttribute := dataAttributes[0]
 	if dataAttribute.Resident {
 		fatalf(exitCodeTechnicalError, "Don't know how to handle resident $DATA attribute in $MFT record\n")
@@ -120,7 +127,7 @@ func main() {
 		totalLength += int64(frag.Length)
 	}
 
-	out, err := createFileIfNotExist(outfile)
+	out, err := openOutputFile(outfile)
 	if err != nil {
 		fatalf(exitCodeFunctionalError, "Unable to open output file: %v\n", err)
 	}
@@ -138,8 +145,12 @@ func main() {
 	printVerbose("Finished\n")
 }
 
-func createFileIfNotExist(outfile string) (*os.File, error) {
-	return os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+func openOutputFile(outfile string) (*os.File, error) {
+	if overwriteOutputIfExists {
+		return os.Create(outfile)
+	} else {
+		return os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	}
 }
 
 func printUsage() {
@@ -153,9 +164,9 @@ func printUsage() {
 
 	fmt.Fprintf(out, "\nFor example: ")
 	if isWin {
-		fmt.Fprintf(out, "%s -v C: D:\\c.mft\n", exe)
+		fmt.Fprintf(out, "%s -v -f C: D:\\c.mft\n", exe)
 	} else {
-		fmt.Fprintf(out, "%s -v /dev/sdb1 ~/sdb1.mft\n", exe)
+		fmt.Fprintf(out, "%s -v -f /dev/sdb1 ~/sdb1.mft\n", exe)
 	}
 }
 
