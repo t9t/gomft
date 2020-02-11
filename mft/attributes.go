@@ -138,10 +138,6 @@ func ParseFileName(b []byte) (FileName, error) {
 	}
 
 	r := binutil.NewLittleEndianReader(b)
-	name, err := utf16.DecodeString(r.Read(0x42, fileNameLength), binary.LittleEndian)
-	if err != nil {
-		return FileName{}, fmt.Errorf("unable to decode file name: %v", err)
-	}
 	parentRef, err := ParseFileReference(r.Read(0x00, 8))
 	if err != nil {
 		return FileName{}, fmt.Errorf("unable to parse file reference: %v", err)
@@ -157,7 +153,7 @@ func ParseFileName(b []byte) (FileName, error) {
 		Flags:               FileAttribute(r.Uint32(0x38)),
 		ExtendedData:        r.Uint32(0x3c),
 		Namespace:           FileNameNamespace(r.Byte(0x41)),
-		Name:                name,
+		Name:                utf16.DecodeString(r.Read(0x42, fileNameLength), binary.LittleEndian),
 	}, nil
 }
 
@@ -192,11 +188,7 @@ func ParseAttributeList(b []byte) ([]AttributeListEntry, error) {
 		name := ""
 		if nameLength != 0 {
 			nameOffset := int(r.Byte(0x07))
-			parsed, err := utf16.DecodeString(r.Read(nameOffset, nameLength*2), binary.LittleEndian)
-			if err != nil {
-				return entries, fmt.Errorf("unable to parsed attribute name: %v", err)
-			}
-			name = parsed
+			name = utf16.DecodeString(r.Read(nameOffset, nameLength*2), binary.LittleEndian)
 		}
 		baseRef, err := ParseFileReference(r.Read(0x10, 8))
 		if err != nil {

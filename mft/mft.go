@@ -281,11 +281,7 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	name := ""
 	if nameLength != 0 {
 		nameBytes := r.Read(int(nameOffset), int(nameLength)*2)
-		decoded, err := utf16.DecodeString(nameBytes, binary.LittleEndian)
-		if err != nil {
-			return Attribute{}, fmt.Errorf("unable to parse attribute name: %v", err)
-		}
-		name = decoded
+		name = utf16.DecodeString(nameBytes, binary.LittleEndian)
 	}
 
 	resident := r.Byte(0x08) == 0x00
