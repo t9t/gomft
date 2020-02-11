@@ -378,7 +378,10 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 }
 
 // DataRunsToFragments transform a list of DataRuns with relative offsets and lengths specified in cluster into a list
-// of fragment.Fragment elements with absolute offsets and lengths specified in bytes.
+// of fragment.Fragment elements with absolute offsets and lengths specified in bytes (for example for use in a
+// fragment.Reader). Note that data will probably not align to a cluster exactly so there could be some padding at the
+// end. It is up to the user of the Fragments to limit reads to actual data size (eg. by using an io.LimitedReader or
+// modifying the last element in the list to limit its length).
 func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragment {
 	frags := make([]fragment.Fragment, len(runs))
 	previousOffsetCluster := int64(0)
