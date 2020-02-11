@@ -1,3 +1,15 @@
+/*
+	Package mft provides functions to parse records and their attributes in an NTFS Master File Table ("MFT" for short).
+
+	Basic usage
+
+	First parse a record using mft.ParseRecord(), which parses the record header and the attribute headers. Then parse
+	each attribute's data individually using the various mft.Parse...() functions.
+			// Error handling left out for brevity
+			record, err := mft.ParseRecord()
+			attrs, err := record.FindAttributes(mft.AttributeTypeFileName)
+			fileName, err := mft.ParseFileName(attrs[0])
+*/
 package mft
 
 import (
@@ -10,32 +22,16 @@ import (
 	"github.com/t9t/gomft/utf16"
 )
 
-const (
-	AttributeTypeStandardInformation AttributeType = 0x10 // always resident
-	AttributeTypeAttributeList       AttributeType = 0x20 // mixed residency
-	AttributeTypeFileName            AttributeType = 0x30 // always resident
-	AttributeTypeObjectId            AttributeType = 0x40 // always resident
-	AttributeTypeSecurityDescriptor  AttributeType = 0x50 // always resident?
-	AttributeTypeVolumeName          AttributeType = 0x60 // always resident?
-	AttributeTypeVolumeInformation   AttributeType = 0x70 // never resident?
-	AttributeTypeData                AttributeType = 0x80 // mixed residency
-	AttributeTypeIndexRoot           AttributeType = 0x90 // always resident
-	AttributeTypeIndexAllocation     AttributeType = 0xa0 // never resident?
-	AttributeTypeBitmap              AttributeType = 0xb0 // nearly always resident?
-	AttributeTypeReparsePoint        AttributeType = 0xc0 // always resident?
-	AttributeTypeEAInformation       AttributeType = 0xd0 // always resident
-	AttributeTypeEA                  AttributeType = 0xe0 // nearly always resident?
-	AttributeTypePropertySet         AttributeType = 0xf0
-	AttributeTypeLoggedUtilityStream AttributeType = 0x100 // always resident
-	AttributeTypeTerminator          AttributeType = 0xFFFFFFFF
-)
-
 var (
 	fileSignature = []byte{0x46, 0x49, 0x4c, 0x45}
 )
 
 const maxInt = int64(^uint(0) >> 1)
 
+// A Record represents an MFT entry, excluding all technical data (such as "offset to first attribute"). The Attributes
+// list only contains the attribute headers and raw data; the attribute data has to be parsed separately. When this is a
+// base record, the BaseRecordReference will be zero. When it is an extension record, the BaseRecordReference points to
+// the record's base record.
 type Record struct {
 	Signature             []byte
 	FileReference         FileReference
@@ -49,6 +45,8 @@ type Record struct {
 	Attributes            []Attribute
 }
 
+// ParseRecord parses bytes into a Record after applying fixup. The data is assumed to be in Little Endian order. Only
+// the attribute headers are parsed, not the actual attribute data.
 func ParseRecord(b []byte) (Record, error) {
 	if len(b) < 42 {
 		return Record{}, fmt.Errorf("record data length should be at least 42 but is %d", len(b))
@@ -95,11 +93,15 @@ func ParseRecord(b []byte) (Record, error) {
 	}, nil
 }
 
+// A FileReference represents a reference to an MFT record. Since the FileReference in a Record is only 4 bytes, the
+// RecordNumber will probably not exceed 32 bits.
 type FileReference struct {
 	RecordNumber   uint64
 	SequenceNumber uint16
 }
 
+// ParseFileReference parses a Little Endian ordered 8-byte slice into a FileReference. The first 6 bytes indicate the
+// record number, while the final 2 bytes indicate the sequence number.
 func ParseFileReference(b []byte) (FileReference, error) {
 	if len(b) != 8 {
 		return FileReference{}, fmt.Errorf("expected 8 bytes but got %d", len(b))
@@ -111,8 +113,10 @@ func ParseFileReference(b []byte) (FileReference, error) {
 	}, nil
 }
 
+// RecordFlag represents a bit mask flag indicating the status of the MFT record.
 type RecordFlag uint16
 
+// Bit values for the RecordFlag. For example, an in-use directory has value 0x0003.
 const (
 	RecordFlagInUse       RecordFlag = 0x0001
 	RecordFlagIsDirectory RecordFlag = 0x0002
@@ -120,6 +124,7 @@ const (
 	RecordFlagIsIndex     RecordFlag = 0x0008
 )
 
+// Is checks if this RecordFlag's bit mask contains the specified flag.
 func (f *RecordFlag) Is(c RecordFlag) bool {
 	return *f&c == c
 }
@@ -150,6 +155,8 @@ func applyFixUp(b []byte, offset int, length int) ([]byte, error) {
 	return b, nil
 }
 
+// FindAttributes returns all attributes of the specified type contained in this record. When no matches are found an
+// empty slice is returned.
 func (r *Record) FindAttributes(attrType AttributeType) []Attribute {
 	ret := make([]Attribute, 0)
 	for _, a := range r.Attributes {
@@ -160,6 +167,9 @@ func (r *Record) FindAttributes(attrType AttributeType) []Attribute {
 	return ret
 }
 
+// Attribute represents an MFT record attribute header and its corresponding raw attribute Data (excluding header data).
+// When the attribute is Resident, the Data contains the actual attribute's data. When the attribute is non-resident,
+// the Data contains DataRuns pointing to the actual data. DataRun data can be parsed using ParseDataRuns().
 type Attribute struct {
 	Type          AttributeType
 	Resident      bool
@@ -171,19 +181,47 @@ type Attribute struct {
 	Data          []byte
 }
 
+// AttributeType represents the type of an Attribute. Use Name() to get the attribute type's name.
 type AttributeType uint32
+
+// Known values for AttributeType. Note that other values might occur too.
+const (
+	AttributeTypeStandardInformation AttributeType = 0x10       // $STANDARD_INFORMATION; always resident
+	AttributeTypeAttributeList       AttributeType = 0x20       // $ATTRIBUTE_LIST; mixed residency
+	AttributeTypeFileName            AttributeType = 0x30       // $FILE_NAME; always resident
+	AttributeTypeObjectId            AttributeType = 0x40       // $OBJECT_ID; always resident
+	AttributeTypeSecurityDescriptor  AttributeType = 0x50       // $SECURITY_DESCRIPTOR; always resident?
+	AttributeTypeVolumeName          AttributeType = 0x60       // $VOLUME_NAME; always resident?
+	AttributeTypeVolumeInformation   AttributeType = 0x70       // $VOLUME_INFORMATION; never resident?
+	AttributeTypeData                AttributeType = 0x80       // $DATA; mixed residency
+	AttributeTypeIndexRoot           AttributeType = 0x90       // $INDEX_ROOT; always resident
+	AttributeTypeIndexAllocation     AttributeType = 0xa0       // $INDEX_ALLOCATION; never resident?
+	AttributeTypeBitmap              AttributeType = 0xb0       // $BITMAP; nearly always resident?
+	AttributeTypeReparsePoint        AttributeType = 0xc0       // $REPARSE_POINT; always resident?
+	AttributeTypeEAInformation       AttributeType = 0xd0       // $EA_INFORMATION; always resident
+	AttributeTypeEA                  AttributeType = 0xe0       // $EA; nearly always resident?
+	AttributeTypePropertySet         AttributeType = 0xf0       // $PROPERTY_SET
+	AttributeTypeLoggedUtilityStream AttributeType = 0x100      // $LOGGED_UTILITY_STREAM; always resident
+	AttributeTypeTerminator          AttributeType = 0xFFFFFFFF // Indicates the last attribute in a list; will not actually be returned by ParseAttributes
+)
+
+// AttributeFlags represents a bit mask flag indicating various properties of an attribute's data.
 type AttributeFlags uint16
 
+// Bit values for the AttributeFlags. For example, an encrypted, compressed attribute has value 0x4001.
 const (
 	AttributeFlagsCompressed AttributeFlags = 0x0001
 	AttributeFlagsEncrypted  AttributeFlags = 0x4000
 	AttributeFlagsSparse     AttributeFlags = 0x8000
 )
 
+// Is checks if this AttributeFlags's bit mask contains the specified flag.
 func (f *AttributeFlags) Is(c AttributeFlags) bool {
 	return *f&c == c
 }
 
+// ParseAttributes parses bytes into Attributes. The data is assumed to be in Little Endian order. Only the attribute
+// headers are parsed, not the actual attribute data.
 func ParseAttributes(b []byte) ([]Attribute, error) {
 	if len(b) == 0 {
 		return []Attribute{}, nil
@@ -228,6 +266,8 @@ func ParseAttributes(b []byte) ([]Attribute, error) {
 	return attributes, nil
 }
 
+// ParseAttribute parses bytes into an Attribute. The data is assumed to be in Little Endian order. Only the attribute
+// headers are parsed, not the actual attribute data.
 func ParseAttribute(b []byte) (Attribute, error) {
 	if len(b) < 22 {
 		return Attribute{}, fmt.Errorf("attribute data should be at least 22 bytes but is %d", len(b))
@@ -288,33 +328,16 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	}, nil
 }
 
-func (a *Attribute) ParseDataAsStandardInformation() (StandardInformation, error) {
-	if a.Type != AttributeTypeStandardInformation {
-		return StandardInformation{}, fmt.Errorf("attribute type %#x is not $STANDARD_INFORMATION (%#x)", a.Type, AttributeTypeStandardInformation)
-	}
-	if !a.Resident {
-		return StandardInformation{}, fmt.Errorf("cannot deal with non-resident $STANDARD_INFORMATION attribute")
-	}
-
-	return ParseStandardInformation(a.Data)
-}
-
-func (a *Attribute) ParseDataAsFileName() (FileName, error) {
-	if a.Type != AttributeTypeFileName {
-		return FileName{}, fmt.Errorf("attribute type %#x is not $FILE_NAME (%#x)", a.Type, AttributeTypeFileName)
-	}
-	if !a.Resident {
-		return FileName{}, fmt.Errorf("cannot deal with non-resident $FILE_NAME attribute")
-	}
-
-	return ParseFileName(a.Data)
-}
-
+// A DataRun represents a fragment of data somewhere on a volume. The OffsetCluster, which can be negative, is relative
+// to a previous DataRun's offset. The OffsetCluster of the first DataRun in a list is relative to the beginning of the
+// volume.
 type DataRun struct {
 	OffsetCluster    int64
 	LengthInClusters uint64
 }
 
+// ParseDataRuns parses bytes into a list of DataRuns. Each DataRun's OffsetCluster is relative to the DataRun before
+// it. The first element's OffsetCluster is relative to the beginning of the volume.
 func ParseDataRuns(b []byte) ([]DataRun, error) {
 	if len(b) == 0 {
 		return []DataRun{}, nil
@@ -354,6 +377,8 @@ func ParseDataRuns(b []byte) ([]DataRun, error) {
 	return runs, nil
 }
 
+// DataRunsToFragments transform a list of DataRuns with relative offsets and lengths specified in cluster into a list
+// of fragment.Fragment elements with absolute offsets and lengths specified in bytes.
 func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragment {
 	frags := make([]fragment.Fragment, len(runs))
 	previousOffsetCluster := int64(0)
@@ -388,6 +413,8 @@ func padTo(data []byte, length int) []byte {
 	return result
 }
 
+// Name returns a string representation of the attribute type. For example "$STANDARD_INFORMATION" or "$FILE_NAME". For
+// anyte attribute type which is unknown, Name will return "unknown".
 func (at AttributeType) Name() string {
 	switch at {
 	case AttributeTypeStandardInformation:
