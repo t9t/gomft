@@ -89,7 +89,7 @@ func main() {
 		fatalf(exitCodeTechnicalError, "Unable to seek to MFT position: %v\n", err)
 	}
 
-	mftSizeInBytes := bootSector.FileRecordSegmentSize.ToBytes(bytesPerCluster)
+	mftSizeInBytes := bootSector.FileRecordSegmentSizeInBytes
 	printVerbose("Reading $MFT file record at position %d (size: %d bytes)\n", mftPosInBytes, mftSizeInBytes)
 	mftData := make([]byte, mftSizeInBytes)
 	_, err = io.ReadFull(in, mftData)
@@ -154,7 +154,7 @@ func main() {
 }
 
 func copy(dst io.Writer, src io.Reader, totalLength int64) (written int64, err error) {
-	buf := make([]byte, 1024 * 1024)
+	buf := make([]byte, 1024*1024)
 	if !showProgress {
 		return io.CopyBuffer(dst, src, buf)
 	}
