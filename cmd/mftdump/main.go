@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"flag"
+	"path/filepath"
 
 	"github.com/t9t/gomft/bootsect"
 	"github.com/t9t/gomft/fragment"
@@ -14,32 +16,34 @@ import (
 const supportedOemId = "NTFS    "
 
 const (
-	exitCodeUserError int = iota + 1
+	exitCodeUserError int = iota + 2
 	exitCodeFunctionalError
 	exitCodeTechnicalError
 )
 
+const isWin = runtime.GOOS == "windows"
+var verbose = false
+
 func main() {
-	isWin := runtime.GOOS == "windows"
-	if len(os.Args) != 3 {
-		fmt.Println("Will dump the MFT of a volume to a file. The volume should be NTFS formatted.")
-		fmt.Println("\nUsage:")
-		fmt.Printf("\t%s <volume> <output file>", os.Args[0])
-		fmt.Println("\n\nFor example:")
-		if isWin {
-			fmt.Printf("\t%s C: D:\\c.mft\n", os.Args[0])
-		} else {
-			fmt.Printf("\t%s /dev/sdb1 ~/sdb1.mft\n", os.Args[0])
-		}
+	verboseFlag := flag.Bool("v", false, "verbose; print details about what's going on")
+	
+	flag.Usage = printUsage
+	flag.Parse()
+
+	verbose = *verboseFlag
+	args := flag.Args()
+
+	if len(args) != 2 {
+		printUsage()
 		os.Exit(exitCodeUserError)
 		return
 	}
 
-	volume := os.Args[1]
+	volume := args[0]
 	if isWin {
 		volume = `\\.\` + volume
 	}
-	outfile := os.Args[2]
+	outfile := args[1]
 
 	in, err := os.Open(volume)
 	if err != nil {
@@ -47,12 +51,14 @@ func main() {
 	}
 	defer in.Close()
 
+	printVerbose("Reading boot sector\n")
 	bootSectorData := make([]byte, 512)
 	_, err = io.ReadFull(in, bootSectorData)
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Unable to read boot sector: %v\n", err)
 	}
 
+	printVerbose("Read %d bytes of boot sector, parsing boot sector\n", len(bootSectorData))
 	bootSector, err := bootsect.Parse(bootSectorData)
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Unable to parse boot sector data: %v\n", err)
@@ -70,17 +76,21 @@ func main() {
 		fatalf(exitCodeTechnicalError, "Unable to seek to MFT position: %v\n", err)
 	}
 
-	mftData := make([]byte, bootSector.FileRecordSegmentSize.ToBytes(bytesPerCluster))
+	mftSizeInBytes := bootSector.FileRecordSegmentSize.ToBytes(bytesPerCluster)
+	printVerbose("Reading $MFT file record at position %d (size: %d bytes)\n", mftPosInBytes, mftSizeInBytes)
+	mftData := make([]byte, mftSizeInBytes)
 	_, err = io.ReadFull(in, mftData)
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Unable to read $MFT record: %v\n", err)
 	}
 
+	printVerbose("Parsing $MFT file record\n")
 	record, err := mft.ParseRecord(mftData)
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Unable to parse $MFT record: %v\n", err)
 	}
 
+	printVerbose("Reading $DATA attribute in $MFT file record\n")
 	dataAttributes := record.FindAttributes(mft.AttributeTypeData)
 	if len(dataAttributes) == 0 {
 		fatalf(exitCodeTechnicalError, "No $DATA attribute found in $MFT record\n")
@@ -116,6 +126,7 @@ func main() {
 	}
 	defer out.Close()
 
+	printVerbose("Copying %d bytes (%s) of data to %s\n", totalLength, formatBytes(totalLength), outfile)
 	n, err := io.Copy(out, fragment.NewReader(in, fragments))
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Error copying data to output file: %v\n", err)
@@ -124,13 +135,50 @@ func main() {
 	if n != totalLength {
 		fatalf(exitCodeTechnicalError, "Expected to copy %d bytes, but copied only %d\n", totalLength, n)
 	}
+	printVerbose("Finished\n")
 }
 
 func createFileIfNotExist(outfile string) (*os.File, error) {
 	return os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 }
 
+func printUsage() {
+	out := os.Stderr
+	exe := filepath.Base(os.Args[0])
+	fmt.Fprintf(out, "\nusage: %s [flags] <volume> <output file>\n\n", exe)
+	fmt.Fprintln(out, "Dump the MFT of a volume to a file. The volume should be NTFS formatted.")
+	fmt.Fprintln(out, "\nFlags:")
+
+	flag.PrintDefaults()
+
+	fmt.Fprintf(out, "\nFor example: ")
+	if isWin {
+		fmt.Fprintf(out, "%s -v C: D:\\c.mft\n", exe)
+	} else {
+		fmt.Fprintf(out, "%s -v /dev/sdb1 ~/sdb1.mft\n", exe)
+	}
+}
+
 func fatalf(exitCode int, format string, v ...interface{}) {
 	fmt.Printf(format, v...)
 	os.Exit(exitCode)
+}
+
+func printVerbose(format string, v ...interface{}) {
+	if verbose {
+		fmt.Printf(format, v...)
+	}
+}
+
+func formatBytes(b int64) string {
+	if b < 1024 {
+		return fmt.Sprintf("%dB", b)
+	}
+	if b < 1048576 {
+		return fmt.Sprintf("%.2fKiB", float32(b)/float32(1024))
+	}
+	if b < 1073741824 {
+		return fmt.Sprintf("%.2fMiB", float32(b)/float32(1048576))
+	}
+	return fmt.Sprintf("%.2fGiB", float32(b)/float32(1073741824))
 }
