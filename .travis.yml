@@ -7,3 +7,20 @@ notifications:
   email: false
 script:
   - go test -count=1 -race -v ./...
+  - mkdir -p out
+  - GOOS=windows GOARCH=386   go build -a -o out/mftdump-386.exe   ./cmd/mftdump
+  - GOOS=windows GOARCH=amd64 go build -a -o out/mftdump-x64.exe   ./cmd/mftdump
+  - GOOS=linux   GOARCH=386   go build -a -o out/mftdump-linux-386 ./cmd/mftdump
+  - GOOS=linux   GOARCH=amd64 go build -a -o out/mftdump-linux-x64 ./cmd/mftdump
+  - GOOS=darwin  GOARCH=386   go build -a -o out/mftdump-macos-386 ./cmd/mftdump
+  - GOOS=darwin  GOARCH=amd64 go build -a -o out/mftdump-macos-x64 ./cmd/mftdump
+  - ls -lha out/
+deploy:
+  provider: releases
+  file_glob: true
+  file: out/*
+  skip_cleanup: true
+  api_key: $DEPLOY_KEY
+  on:
+    repo: t9t/gomft
+    tags: true
