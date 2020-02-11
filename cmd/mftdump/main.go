@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/t9t/gomft/bootsect"
 	"github.com/t9t/gomft/fragment"
@@ -27,17 +29,21 @@ var (
 	// flags
 	verbose                 = false
 	overwriteOutputIfExists = false
+	showProgress            = false
 )
 
 func main() {
+	start := time.Now()
 	verboseFlag := flag.Bool("v", false, "verbose; print details about what's going on")
 	forceFlag := flag.Bool("f", false, "force; overwrite the output file if it already exists")
+	progressFlag := flag.Bool("p", false, "progress; show progress during dumping")
 
 	flag.Usage = printUsage
 	flag.Parse()
 
 	verbose = *verboseFlag
 	overwriteOutputIfExists = *forceFlag
+	showProgress = *progressFlag
 	args := flag.Args()
 
 	if len(args) != 2 {
@@ -134,7 +140,7 @@ func main() {
 	defer out.Close()
 
 	printVerbose("Copying %d bytes (%s) of data to %s\n", totalLength, formatBytes(totalLength), outfile)
-	n, err := io.Copy(out, fragment.NewReader(in, fragments))
+	n, err := copy(out, fragment.NewReader(in, fragments), totalLength)
 	if err != nil {
 		fatalf(exitCodeTechnicalError, "Error copying data to output file: %v\n", err)
 	}
@@ -142,7 +148,56 @@ func main() {
 	if n != totalLength {
 		fatalf(exitCodeTechnicalError, "Expected to copy %d bytes, but copied only %d\n", totalLength, n)
 	}
-	printVerbose("Finished\n")
+	end := time.Now()
+	dur := end.Sub(start)
+	printVerbose("Finished in %v\n", dur)
+}
+
+func copy(dst io.Writer, src io.Reader, totalLength int64) (written int64, err error) {
+	buf := make([]byte, 1024 * 1024)
+	if !showProgress {
+		return io.CopyBuffer(dst, src, buf)
+	}
+
+	onePercent := float64(totalLength) / float64(100.0)
+	totalSize := formatBytes(totalLength)
+
+	// Below copied from io.copyBuffer (https://golang.org/src/io/io.go?s=12796:12856#L380)
+	for {
+		printProgress(written, totalSize, onePercent)
+
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			if er != io.EOF {
+				err = er
+			}
+			break
+		}
+	}
+	printProgress(written, totalSize, onePercent)
+	fmt.Println()
+	return written, err
+}
+
+func printProgress(n int64, totalSize string, onePercent float64) {
+	percentage := float64(n) / onePercent
+	barCount := int(percentage / 2.0)
+	spaceCount := 50 - barCount
+	fmt.Printf("\r[%s%s] %.2f%% (%s / %s)     ", strings.Repeat("|", barCount), strings.Repeat(" ", spaceCount), percentage, formatBytes(n), totalSize)
 }
 
 func openOutputFile(outfile string) (*os.File, error) {
