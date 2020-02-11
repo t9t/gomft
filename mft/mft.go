@@ -361,7 +361,7 @@ func DataRunsToFragments(runs []DataRun, bytesPerCluster int) []fragment.Fragmen
 		exactClusterOffset := previousOffsetCluster + run.OffsetCluster
 		frags[i] = fragment.Fragment{
 			Offset: exactClusterOffset * int64(bytesPerCluster),
-			Length: int(run.LengthInClusters) * bytesPerCluster,
+			Length: int64(run.LengthInClusters) * int64(bytesPerCluster),
 		}
 		previousOffsetCluster = exactClusterOffset
 	}

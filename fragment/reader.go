@@ -7,14 +7,14 @@ import (
 
 type Fragment struct {
 	Offset int64
-	Length int
+	Length int64
 }
 
 type Reader struct {
 	src       io.ReadSeeker
 	fragments []Fragment
 	idx       int
-	remaining int
+	remaining int64
 }
 
 func NewReader(src io.ReadSeeker, fragments []Fragment) *Reader {
@@ -47,11 +47,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 
 	target := p
-	if len(p) > r.remaining {
+	if int64(len(p)) > r.remaining {
 		target = p[:r.remaining]
 	}
 
 	n, err = io.ReadFull(r.src, target)
-	r.remaining -= n
+	r.remaining -= int64(n)
 	return n, err
 }
