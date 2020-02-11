@@ -8,10 +8,10 @@
 	When the fragment Reader is near the end of a fragment and a Read() call requests more data than what is left in
 	the current fragment, the Reader will exhaust only the current fragment and return that data (which could be less
 	than len(p)). A next Read() call will then seek to the next fragment and continue reading there. When the last
-	fragment is exhaused by a Read(), it will return the remaining bytes read and a nil error. Any subsequent Read()
+	fragment is exhausted by a Read(), it will return the remaining bytes read and a nil error. Any subsequent Read()
 	calls after that will return 0, io.EOF.
 
-	When reading from a next fragment, the Reader will seek using the absolute Length in the fragment from the start
+	When accessing a new fragment, the Reader will seek using the absolute Length in the fragment from the start
 	of the contained io.ReadSeeker (using io.SeekStart).
 */
 package fragment
