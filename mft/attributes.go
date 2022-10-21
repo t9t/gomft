@@ -242,6 +242,18 @@ type IndexEntry struct {
 	SubNodeVCN    uint64
 }
 
+type IndexBlock struct {
+	Signature            string
+	UpdateSequenceOffset uint16
+	UpdateSequenceSize   uint16
+	UpdateSequenceNumber uint16
+	LSN                  uint64 // // $LogFile Sequence Number
+	EntryOffset          uint32
+	TotalEntrySize       uint32
+	AllocEntrySize       uint32
+	NotLeaf              byte
+}
+
 // ParseIndexRoot parses the data of a $INDEX_ROOT attribute's data (type AttributeTypeIndexRoot) into
 // IndexRoot. Note that no additional correctness checks are done, so it's up to the caller to ensure the passed data
 // actually represents a $INDEX_ROOT attribute's data.
@@ -266,7 +278,7 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 	}
 	entries := []IndexEntry{}
 	if totalSize >= 16 {
-		parsed, err := parseIndexEntries(r.Read(0x20, totalSize-16))
+		parsed, err := ParseIndexEntries(r.Read(0x20, totalSize-16))
 		if err != nil {
 			return IndexRoot{}, fmt.Errorf("error parsing index entries: %v", err)
 		}
@@ -283,7 +295,35 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 	}, nil
 }
 
-func parseIndexEntries(b []byte) ([]IndexEntry, error) {
+func ParseIndexBlock(b []byte) (IndexBlock, error) {
+	if len(b) < 36 {
+		return IndexBlock{}, fmt.Errorf("expected at least %d bytes but got %d", 36, len(b))
+	}
+
+	r := binutil.NewLittleEndianReader(b)
+	signature := string(r.Read(0x00, 0x04))
+	sequenceNumberOffset := r.Uint16(0x04)
+	sequenceNumberSize := r.Uint16(0x06)
+	updateSequenceNumber := r.Uint16(int(sequenceNumberOffset))
+	lsn := r.Uint64(0x08)
+
+	entryOffset := r.Uint32(0x18)
+	totalEntrySize := r.Uint32(0x1C)
+	allocEntrySize := r.Uint32(0x20)
+	notLeaf := r.Read(0x24, 1)[0]
+
+	return IndexBlock{Signature: signature,
+		UpdateSequenceOffset: sequenceNumberOffset,
+		UpdateSequenceSize:   sequenceNumberSize,
+		UpdateSequenceNumber: updateSequenceNumber,
+		LSN:                  lsn,
+		EntryOffset:          entryOffset,
+		TotalEntrySize:       totalEntrySize,
+		AllocEntrySize:       allocEntrySize,
+		NotLeaf:              notLeaf}, nil
+}
+
+func ParseIndexEntries(b []byte) ([]IndexEntry, error) {
 	if len(b) < 13 {
 		return []IndexEntry{}, fmt.Errorf("expected at least %d bytes but got %d", 13, len(b))
 	}
@@ -325,7 +365,15 @@ func parseIndexEntries(b []byte) ([]IndexEntry, error) {
 			SubNodeVCN:    subNodeVcn,
 		}
 		entries = append(entries, entry)
+		oldLen := len(b)
 		b = r.ReadFrom(entryLength)
+		if oldLen == len(b) {
+			break
+		}
+
+		if isLastEntryInNode {
+			break
+		}
 	}
 	return entries, nil
 }
