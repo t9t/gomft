@@ -155,6 +155,8 @@ func applyFixUp(b []byte, offset int, length int) ([]byte, error) {
 	return b, nil
 }
 
+// ApplyFixup applies the NTFS fixup to the data of a Data Run.
+// http://inform.pucp.edu.pe/~inf232/Ntfs/ntfs_doc_v0.5/concepts/fixup.html
 func ApplyFixup(b []byte) ([]byte, error) {
 	r := binutil.NewLittleEndianReader(b)
 	updateSequenceOffset := int(r.Uint16(0x04))

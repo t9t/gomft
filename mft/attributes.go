@@ -242,12 +242,15 @@ type IndexEntry struct {
 	SubNodeVCN    uint64
 }
 
+// IndexBlock represents an IndexHeader preceding IndexEntry data. The EntryOffset defines the beginning of the
+// first IndexEntry relative to the position of EntryOffset at 0x18.
+// http://inform.pucp.edu.pe/~inf232/Ntfs/ntfs_doc_v0.5/concepts/index_header.html
 type IndexBlock struct {
 	Signature            string
 	UpdateSequenceOffset uint16
 	UpdateSequenceSize   uint16
 	UpdateSequenceNumber uint16
-	LSN                  uint64 // // $LogFile Sequence Number
+	LSN                  uint64 // $LogFile Sequence Number
 	EntryOffset          uint32
 	TotalEntrySize       uint32
 	AllocEntrySize       uint32
@@ -295,6 +298,9 @@ func ParseIndexRoot(b []byte) (IndexRoot, error) {
 	}, nil
 }
 
+// ParseIndexBlock parses the data of a $INDEX_ALLOCATION attribute into IndexBlock.
+// Note that no additional correctness checks are done, so it's up to the caller to ensure the passed data
+// actually represents a $INDEX_ALLOCATION attribute's data.
 func ParseIndexBlock(b []byte) (IndexBlock, error) {
 	if len(b) < 36 {
 		return IndexBlock{}, fmt.Errorf("expected at least %d bytes but got %d", 36, len(b))
@@ -316,13 +322,14 @@ func ParseIndexBlock(b []byte) (IndexBlock, error) {
 		UpdateSequenceOffset: sequenceNumberOffset,
 		UpdateSequenceSize:   sequenceNumberSize,
 		UpdateSequenceNumber: updateSequenceNumber,
-		LSN:                  lsn,
+		LSN:                  lsn, // $LogFile Sequence Number
 		EntryOffset:          entryOffset,
 		TotalEntrySize:       totalEntrySize,
 		AllocEntrySize:       allocEntrySize,
 		NotLeaf:              notLeaf}, nil
 }
 
+// ParseIndexEntries parses the given raw bytes into a list of IndexEntry objects.
 func ParseIndexEntries(b []byte) ([]IndexEntry, error) {
 	if len(b) < 13 {
 		return []IndexEntry{}, fmt.Errorf("expected at least %d bytes but got %d", 13, len(b))
@@ -365,12 +372,7 @@ func ParseIndexEntries(b []byte) ([]IndexEntry, error) {
 			SubNodeVCN:    subNodeVcn,
 		}
 		entries = append(entries, entry)
-		oldLen := len(b)
 		b = r.ReadFrom(entryLength)
-		if oldLen == len(b) {
-			break
-		}
-
 		if isLastEntryInNode {
 			break
 		}
