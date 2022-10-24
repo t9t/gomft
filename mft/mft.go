@@ -162,7 +162,6 @@ func ApplyFixup(b []byte) ([]byte, error) {
 	updateSequenceOffset := int(r.Uint16(0x04))
 	updateSequenceSize := int(r.Uint16(0x06))
 	return applyFixUp(b, updateSequenceOffset, updateSequenceSize)
-
 }
 
 // FindAttributes returns all attributes of the specified type contained in this record. When no matches are found an
