@@ -105,7 +105,7 @@ into fragments.
 See: https://godoc.org/github.com/t9t/gomft/fragment
 
 ### bintuil & BinReader
-The `binutil` package contains some functions to help using binary data, primarily `binutil.Duplicate()` to duplicate 
+The `binutil` package contains some functions to help using binary data, primarily `binutil.Duplicate()` to duplicate
 a slice of bytes and `BinReader` to interpret binary data according to a certain byte order (little/big endian).
 
 See: https://godoc.org/github.com/t9t/gomft/binutil
@@ -147,8 +147,8 @@ In no particular order, these pages and programs have helped me build gomft.
 
 - https://en.wikipedia.org/wiki/NTFS#Master_File_Table
 - http://www.kcall.co.uk/ntfs/index.html
-- https://flatcap.org/linux-ntfs/ntfs/index.html
-- http://www.cse.scu.edu/~tschwarz/coen252_07Fall/Lectures/NTFS.html
+- https://web.archive.org/web/20210922203602/https://flatcap.org/linux-ntfs/ntfs/index.html
+- https://web.archive.org/web/20200220141834/https://www.cse.scu.edu/~tschwarz/coen252_07Fall/Lectures/NTFS.html
 - https://www.autoitscript.com/forum/topic/94269-mft-access-reading-parsing-the-master-file-table-on-ntfs-filesystems/
 - https://www.andreafortuna.org/2017/07/18/how-to-extract-data-and-timeline-from-master-file-table-on-ntfs-filesystem/
 - http://ftp.kolibrios.org/users/Asper/docs/NTFS/ntfsdoc.html
